@@ -1,11 +1,7 @@
 # Project Rules
 
-This document outlines the rules and conventions to follow for this nextjs project using Shadcn UI.
-
-### 🔄 Project Awareness & Context
-- **Always check `PLANNING.md`** at the start of a new conversation to understand the project's architecture, goals, styling, and constraints.
-- **Check `TASK.md`** before starting a new task. If the task isn’t listed, add it with a brief description and today's date.
-- **Use consistent naming conventions, file structure, and architectural patterns** as described in `PLANNING.md`.
+### UI Design
+- *** Design UI for a mobile first app**
 
 ### 🧱 Code Structure & Modularity
 - **Never create a file longer than 500 lines of code.** If a file approaches this limit, refactor by splitting it into modules or helper files.
@@ -21,34 +17,7 @@ This document outlines the rules and conventions to follow for this nextjs proje
     - 1 edge case
     - 1 failure case
 
-### ✅ Task Completion
-- **Mark completed tasks in `TASK.md`** immediately after finishing them.
-- Add new sub-tasks or TODOs discovered during development to `TASK.md` under a “Discovered During Work” section.
-
 ### 📎 Style & Conventions
 - **Use JavaScript** as the primary language.
 - **Follow a consistent style guide** (e.g., Airbnb JavaScript Style Guide) and consider using a linter like ESLint and a formatter like Prettier.
 - **Utilize React best practices** for component design and state management (if applicable).
-- **Leverage Shadcn UI components** as the primary building blocks for the user interface, adhering to their usage and styling conventions.
-- Write **JSDoc comments for every function and component**:
-  ```javascript
-  /**
-   * Brief summary.
-   *
-   * @param {type} param1 - Description.
-   * @returns {type} Description.
-   */
-  function example(param1) {
-    // ...
-  }
-
-  /**
-   * Brief component summary.
-   *
-   * @param {object} props - The component's props.
-   * @param {string} props.name - The name to display.
-   * @returns {JSX.Element} The component's JSX.
-   */
-  function MyComponent({ name }) {
-    return <div>{name}</div>;
-  }

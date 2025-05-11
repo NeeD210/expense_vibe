@@ -4,14 +4,15 @@ import { SignInForm } from "./SignInForm";
 import { SignOutButton } from "./SignOutButton";
 import { Toaster } from "sonner";
 import { useState } from "react";
-import { Home, PieChart, Settings, Plus } from "lucide-react";
+import { Home, PieChart, Settings, Plus, List } from "lucide-react";
 import HomePage from "./pages/HomePage";
 import AnalysisPage from "./pages/AnalysisPage";
 import ConfigPage from "./pages/ConfigPage";
 import AddExpensePage from "./pages/AddExpensePage";
+import ManageExpensesPage from "./pages/ManageExpensesPage";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'analysis' | 'config' | 'add'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'analysis' | 'config' | 'add' | 'manage'>('home');
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -26,6 +27,7 @@ export default function App() {
           {currentPage === 'analysis' && <AnalysisPage />}
           {currentPage === 'config' && <ConfigPage />}
           {currentPage === 'add' && <AddExpensePage />}
+          {currentPage === 'manage' && <ManageExpensesPage />}
         </Authenticated>
         
         <Unauthenticated>
@@ -41,36 +43,50 @@ export default function App() {
         </Unauthenticated>
       </main>
       
-      <Authenticated>
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t">
-          <div className="flex justify-around p-4">
-            <button
-              onClick={() => setCurrentPage('home')}
-              className={`p-2 ${currentPage === 'home' ? 'text-blue-500' : 'text-gray-500'}`}
-            >
-              <Home size={24} />
-            </button>
-            <button
-              onClick={() => setCurrentPage('analysis')}
-              className={`p-2 ${currentPage === 'analysis' ? 'text-blue-500' : 'text-gray-500'}`}
-            >
-              <PieChart size={24} />
-            </button>
-            <button
-              onClick={() => setCurrentPage('config')}
-              className={`p-2 ${currentPage === 'config' ? 'text-blue-500' : 'text-gray-500'}`}
-            >
-              <Settings size={24} />
-            </button>
-            <button
-              onClick={() => setCurrentPage('add')}
-              className={`p-2 ${currentPage === 'add' ? 'text-blue-500' : 'text-gray-500'}`}
-            >
-              <Plus size={24} />
-            </button>
-          </div>
-        </nav>
-      </Authenticated>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
+        <div className="max-w-md mx-auto flex justify-around">
+          <button
+            onClick={() => setCurrentPage('home')}
+            className={`p-2 rounded-full transition-colors ${
+              currentPage === 'home' ? 'text-blue-500' : 'text-gray-500'
+            }`}
+          >
+            <Home size={24} />
+          </button>
+          <button
+            onClick={() => setCurrentPage('analysis')}
+            className={`p-2 rounded-full transition-colors ${
+              currentPage === 'analysis' ? 'text-blue-500' : 'text-gray-500'
+            }`}
+          >
+            <PieChart size={24} />
+          </button>
+          <button
+            onClick={() => setCurrentPage('add')}
+            className={`p-2 rounded-full transition-colors ${
+              currentPage === 'add' ? 'text-blue-500' : 'text-gray-500'
+            }`}
+          >
+            <Plus size={24} />
+          </button>
+          <button
+            onClick={() => setCurrentPage('manage')}
+            className={`p-2 rounded-full transition-colors ${
+              currentPage === 'manage' ? 'text-blue-500' : 'text-gray-500'
+            }`}
+          >
+            <List size={24} />
+          </button>
+          <button
+            onClick={() => setCurrentPage('config')}
+            className={`p-2 rounded-full transition-colors ${
+              currentPage === 'config' ? 'text-blue-500' : 'text-gray-500'
+            }`}
+          >
+            <Settings size={24} />
+          </button>
+        </div>
+      </nav>
       
       <Toaster />
     </div>

@@ -25,6 +25,7 @@ export const addExpense = mutation({
     category: v.string(),
     description: v.string(),
     amount: v.number(),
+    cuotas: v.number(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -125,5 +126,64 @@ export const updatePaymentTypes = mutation({
         paymentTypes: args.paymentTypes,
       });
     }
+  },
+});
+
+export const deleteExpense = mutation({
+  args: {
+    id: v.id("expenses"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    
+    const expense = await ctx.db.get(args.id);
+    if (!expense) throw new Error("Expense not found");
+    if (expense.userId !== userId) throw new Error("Not authorized");
+    
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const updateExpense = mutation({
+  args: {
+    id: v.id("expenses"),
+    date: v.number(),
+    paymentType: v.string(),
+    category: v.string(),
+    description: v.string(),
+    amount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+    
+    const expense = await ctx.db.get(args.id);
+    if (!expense) throw new Error("Expense not found");
+    if (expense.userId !== userId) throw new Error("Not authorized");
+    
+    await ctx.db.patch(args.id, {
+      date: args.date,
+      paymentType: args.paymentType,
+      category: args.category,
+      description: args.description,
+      amount: args.amount,
+    });
+  },
+});
+
+export const setDefaultCuotas = mutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const expenses = await ctx.db.query("expenses").collect();
+    let updatedCount = 0;
+
+    for (const expense of expenses) {
+      await ctx.db.patch(expense._id, { cuotas: 1 });
+      updatedCount++;
+    }
+
+    return updatedCount;
   },
 });

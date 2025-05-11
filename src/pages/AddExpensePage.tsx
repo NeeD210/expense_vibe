@@ -10,6 +10,7 @@ export default function AddExpensePage() {
   
   const [date, setDate] = useState(new Date());
   const [paymentType, setPaymentType] = useState(paymentTypes[0] ?? "");
+  const [cuotas, setCuotas] = useState("1");
   const [category, setCategory] = useState(categories[0] ?? "");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -24,6 +25,7 @@ export default function AddExpensePage() {
         category,
         description,
         amount: parseFloat(amount),
+        cuotas: parseInt(cuotas),
       });
       
       toast.success("Expense added");
@@ -48,21 +50,36 @@ export default function AddExpensePage() {
         />
       </div>
       
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Payment Type
-        </label>
-        <select
-          value={paymentType}
-          onChange={e => setPaymentType(e.target.value)}
-          className="w-full px-4 py-2 border rounded"
-        >
-          {paymentTypes.map(pt => (
-            <option key={pt} value={pt}>
-              {pt}
-            </option>
-          ))}
-        </select>
+      <div className="flex gap-4">
+        <div className="w-3/4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Payment Type
+          </label>
+          <select
+            value={paymentType}
+            onChange={e => setPaymentType(e.target.value)}
+            className="w-full px-4 py-2 border rounded"
+          >
+            {paymentTypes.map(pt => (
+              <option key={pt} value={pt}>
+                {pt}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="w-1/4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Cuotas
+          </label>
+          <input
+            type="number"
+            min="1"
+            value={cuotas}
+            onChange={e => setCuotas(e.target.value)}
+            className="w-full px-4 py-2 border rounded"
+          />
+        </div>
       </div>
       
       <div>

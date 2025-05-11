@@ -10,6 +10,7 @@ const applicationTables = {
     category: v.string(),
     description: v.string(),
     amount: v.number(),
+    cuotas: v.optional(v.number()),
   }).index("by_user", ["userId"]),
   
   userPreferences: defineTable({
