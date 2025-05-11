@@ -13,6 +13,7 @@ type EditingExpense = {
   category: string;
   description: string;
   amount: number;
+  cuotas: number;
 };
 
 export default function ManageExpensesPage() {
@@ -41,6 +42,7 @@ export default function ManageExpensesPage() {
       category: expense.category,
       description: expense.description,
       amount: expense.amount,
+      cuotas: expense.cuotas ?? 1,
     });
   };
   
@@ -55,6 +57,7 @@ export default function ManageExpensesPage() {
         category: editingExpense.category,
         description: editingExpense.description,
         amount: editingExpense.amount,
+        cuotas: editingExpense.cuotas,
       });
       
       setEditingExpense(null);
@@ -134,16 +137,28 @@ export default function ManageExpensesPage() {
                     placeholder="Description"
                     className="flex-1 px-4 py-2 border rounded"
                   />
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={editingExpense.amount}
-                    onChange={e => setEditingExpense({
-                      ...editingExpense,
-                      amount: parseFloat(e.target.value),
-                    })}
-                    className="w-32 px-4 py-2 border rounded"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editingExpense.amount}
+                      onChange={e => setEditingExpense({
+                        ...editingExpense,
+                        amount: parseFloat(e.target.value),
+                      })}
+                      className="w-32 px-4 py-2 border rounded"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      value={editingExpense.cuotas}
+                      onChange={e => setEditingExpense({
+                        ...editingExpense,
+                        cuotas: parseInt(e.target.value),
+                      })}
+                      className="w-20 px-4 py-2 border rounded"
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <button
@@ -166,12 +181,16 @@ export default function ManageExpensesPage() {
                   <div className="font-medium">{expense.category}</div>
                   <div className="text-sm text-gray-500">{expense.description}</div>
                   <div className="text-xs text-gray-400">
-                    {format(expense.date, 'MMM d, yyyy')} • {expense.paymentType}
+                    {format(expense.date, 'MMM d, yyyy')}
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="font-medium">
                     ${expense.amount.toFixed(2)}
+                    <div className="text-sm text-gray-500 font-normal">
+                      {expense.paymentType}
+                      {expense.cuotas && expense.cuotas > 1 && ` - ${expense.cuotas} cuota${expense.cuotas > 1 ? 's' : ''}`}
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button

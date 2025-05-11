@@ -9,15 +9,18 @@ import HomePage from "./pages/HomePage";
 import AnalysisPage from "./pages/AnalysisPage";
 import ConfigPage from "./pages/ConfigPage";
 import AddExpensePage from "./pages/AddExpensePage";
+import AddIncomePage from "./pages/AddIncomePage";
 import ManageExpensesPage from "./pages/ManageExpensesPage";
+import PerFiLogo from "./img/PerFi_logo.png";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'analysis' | 'config' | 'add' | 'manage'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'analysis' | 'config' | 'add' | 'manage' | 'income'>('home');
+  const [showAddMenu, setShowAddMenu] = useState(false);
   
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center border-b">
-        <h2 className="text-xl font-semibold accent-text">Expense Tracker</h2>
+        <img src={PerFiLogo} alt="PerFi App Logo" className="h-10" />
         <SignOutButton />
       </header>
       
@@ -27,6 +30,7 @@ export default function App() {
           {currentPage === 'analysis' && <AnalysisPage />}
           {currentPage === 'config' && <ConfigPage />}
           {currentPage === 'add' && <AddExpensePage />}
+          {currentPage === 'income' && <AddIncomePage />}
           {currentPage === 'manage' && <ManageExpensesPage />}
         </Authenticated>
         
@@ -61,14 +65,38 @@ export default function App() {
           >
             <PieChart size={24} />
           </button>
-          <button
-            onClick={() => setCurrentPage('add')}
-            className={`p-2 rounded-full transition-colors ${
-              currentPage === 'add' ? 'text-blue-500' : 'text-gray-500'
-            }`}
-          >
-            <Plus size={24} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowAddMenu(!showAddMenu)}
+              className={`p-2 rounded-full transition-colors ${
+                (currentPage === 'add' || currentPage === 'income') ? 'text-blue-500' : 'text-gray-500'
+              }`}
+            >
+              <Plus size={24} />
+            </button>
+            {showAddMenu && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-white rounded-lg shadow-lg border p-2">
+                <button
+                  onClick={() => {
+                    setCurrentPage('add');
+                    setShowAddMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded"
+                >
+                  Expense
+                </button>
+                <button
+                  onClick={() => {
+                    setCurrentPage('income');
+                    setShowAddMenu(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded"
+                >
+                  Income
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => setCurrentPage('manage')}
             className={`p-2 rounded-full transition-colors ${

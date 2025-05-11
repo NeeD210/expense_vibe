@@ -1,28 +1,73 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 export default function AddExpensePage() {
-  const categories = useQuery(api.expenses.getCategories) ?? [];
-  const paymentTypes = useQuery(api.expenses.getPaymentTypes) ?? [];
+  const categoriesData = useQuery(api.expenses.getCategories);
+  const paymentTypesData = useQuery(api.expenses.getPaymentTypes);
+  const lastTransactionData = useQuery(api.expenses.getLastTransaction);
+  
+  const categories = categoriesData ?? [];
+  const paymentTypes = paymentTypesData ?? [];
+  const lastTransaction = lastTransactionData;
   const addExpense = useMutation(api.expenses.addExpense);
+  const hasInitialized = useRef(false);
   
   const [date, setDate] = useState(new Date());
-  const [paymentType, setPaymentType] = useState(paymentTypes[0] ?? "");
+  const [paymentType, setPaymentType] = useState("");
   const [cuotas, setCuotas] = useState("1");
-  const [category, setCategory] = useState(categories[0] ?? "");
+  const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+
+  // Set initial values only once when the component mounts and all data is loaded
+  useEffect(() => {
+    if (hasInitialized.current) {
+      return;
+    }
+
+    const isLastTransactionLoading = typeof lastTransactionData === 'undefined';
+    const areCategoriesLoading = typeof categoriesData === 'undefined';
+    const arePaymentTypesLoading = typeof paymentTypesData === 'undefined';
+
+    // Wait until all relevant data sources for prefilling have loaded
+    if (isLastTransactionLoading || areCategoriesLoading || arePaymentTypesLoading) {
+      return;
+    }
+
+    // All data sources are now loaded (they are not undefined anymore).
+    // lastTransactionData can be null or an object.
+    // categoriesData and paymentTypesData will be arrays (possibly empty if query returned empty, but not null).
+
+    if (lastTransaction) { // lastTransactionData is an object (truthy)
+      setCategory(lastTransaction.category);
+      setPaymentType(lastTransaction.paymentType);
+    } else { // lastTransactionData is null (falsy)
+      // Use categoriesData and paymentTypesData directly as they are loaded arrays
+      if (categoriesData && categoriesData.length > 0) {
+        setCategory(categoriesData[0]);
+      }
+      if (paymentTypesData && paymentTypesData.length > 0) {
+        setPaymentType(paymentTypesData[0]);
+      }
+    }
+    hasInitialized.current = true; // All sources loaded, prefill decision made.
+
+  }, [lastTransaction, categoriesData, paymentTypesData]); // Dependencies trigger effect when data changes
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Ensure we have valid values before submitting
+    const finalCategory = category || categories[0] || "";
+    const finalPaymentType = paymentType || paymentTypes[0] || "";
+    
     try {
       await addExpense({
         date: date.getTime(),
-        paymentType,
-        category,
+        paymentType: finalPaymentType,
+        category: finalCategory,
         description,
         amount: parseFloat(amount),
         cuotas: parseInt(cuotas),

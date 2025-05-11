@@ -153,6 +153,7 @@ export const updateExpense = mutation({
     category: v.string(),
     description: v.string(),
     amount: v.number(),
+    cuotas: v.number(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -168,6 +169,7 @@ export const updateExpense = mutation({
       category: args.category,
       description: args.description,
       amount: args.amount,
+      cuotas: args.cuotas,
     });
   },
 });
@@ -185,5 +187,20 @@ export const setDefaultCuotas = mutation({
     }
 
     return updatedCount;
+  },
+});
+
+export const getLastTransaction = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    
+    const lastExpense = await ctx.db
+      .query("expenses")
+      .withIndex("by_user", q => q.eq("userId", userId))
+      .order("desc")
+      .first();
+    
+    return lastExpense;
   },
 });
