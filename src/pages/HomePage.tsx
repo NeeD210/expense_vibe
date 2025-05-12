@@ -145,19 +145,12 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {chartType === 'doughnut' && (
-        <div className="text-center mb-2">
-          <div className="text-xl font-semibold">{currentMonthFormatted}</div>
-          <div className="text-md text-gray-600">
-            Monthly Expenses - ${totalCurrentMonthAmount.toFixed(2)}
-          </div>
-        </div>
-      )}
       <div className="aspect-square max-w-xs mx-auto">
         {chartType === 'doughnut' ? (
           <Doughnut 
             data={doughnutChartData} 
             options={{ 
+              maintainAspectRatio: false,
               plugins: { 
                 legend: { 
                   position: 'bottom' as const, 
@@ -166,7 +159,9 @@ export default function HomePage() {
                   }
                 },
                 title: {
-                  display: false // Already displaying month and title manually
+                  display: true,
+                  text: [currentMonthFormatted, `Monthly Expenses - $${totalCurrentMonthAmount.toFixed(2)}`],
+                  position: 'top' as const,
                 }
               }
             }} 
