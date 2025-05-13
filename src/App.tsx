@@ -1,10 +1,9 @@
 import { Authenticated, Unauthenticated, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { SignInForm } from "./SignInForm";
-import { SignOutButton } from "./SignOutButton";
 import { Toaster } from "sonner";
-import { useState } from "react";
-import { Home, PieChart, Settings, Plus, List } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Home, PieChart, Settings, Plus, List, TrendingDown, TrendingUp } from "lucide-react";
 import HomePage from "./pages/HomePage";
 import AnalysisPage from "./pages/AnalysisPage";
 import ConfigPage from "./pages/ConfigPage";
@@ -16,6 +15,8 @@ import PerFiLogo from "./img/PerFi_logo.png";
 export default function App() {
   const [currentPage, setCurrentPage] = useState<keyof typeof pageComponents>('home');
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const addMenuRef = useRef<HTMLDivElement>(null);
   
   const pageComponents = {
     home: HomePage,
@@ -28,12 +29,31 @@ export default function App() {
 
   const CurrentPageComponent = pageComponents[currentPage];
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        showAddMenu &&
+        addButtonRef.current &&
+        !addButtonRef.current.contains(event.target as Node) &&
+        addMenuRef.current &&
+        !addMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowAddMenu(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showAddMenu]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Authenticated>
         <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center border-b">
           <img src={PerFiLogo} alt="PerFi App Logo" className="h-10" />
-          <SignOutButton />
+          
         </header>
       </Authenticated>
       
@@ -49,13 +69,13 @@ export default function App() {
                 <img src={PerFiLogo} alt="PerFi App Logo" className="h-16 mx-auto mb-4" />
                 <p className="text-xl text-slate-600">Sign in to get started</p>
               </div>
-              <SignInForm />
+              <SignInForm setCurrentPage={setCurrentPage} />
             </div>
           </div>
         </Unauthenticated>
       </main>
       
-      <Authenticated>
+      <Authenticated>      
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
           <div className="max-w-md mx-auto flex justify-around">
             <button
@@ -76,22 +96,24 @@ export default function App() {
             </button>
             <div className="relative">
               <button
+                ref={addButtonRef}
                 onClick={() => setShowAddMenu(!showAddMenu)}
-                className={`p-2 rounded-full transition-colors ${
-                  (currentPage === 'add' || currentPage === 'income') ? 'text-blue-500' : 'text-gray-500'
-                }`}
+                className={`p-2 rounded-md bg-[#C554C4] text-white transition-colors`}
               >
                 <Plus size={24} />
               </button>
               {showAddMenu && (
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-white rounded-lg shadow-lg border p-2">
+                <div 
+                  ref={addMenuRef} 
+                  className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-white rounded-lg shadow-lg border p-2 w-40">
                   <button
                     onClick={() => {
                       setCurrentPage('add');
                       setShowAddMenu(false);
                     }}
-                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded"
+                    className="flex items-center w-full text-left px-4 py-2 hover:bg-gray-100 rounded"
                   >
+                    <TrendingDown size={18} className="mr-2" />
                     Expense
                   </button>
                   <button
@@ -99,8 +121,9 @@ export default function App() {
                       setCurrentPage('income');
                       setShowAddMenu(false);
                     }}
-                    className="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded"
+                    className="flex items-center w-full text-left px-4 py-2 hover:bg-gray-100 rounded"
                   >
+                    <TrendingUp size={18} className="mr-2" />
                     Income
                   </button>
                 </div>
@@ -125,8 +148,7 @@ export default function App() {
           </div>
         </nav>
       </Authenticated>
-      
-      <Toaster />
+      <Toaster position="bottom-center" offset="80px" />
     </div>
   );
 }

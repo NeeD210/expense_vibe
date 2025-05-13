@@ -3,19 +3,24 @@ import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 const defaultCategories = [
-  "Food",
-  "Transport",
-  "Entertainment",
-  "Shopping",
-  "Bills",
-  "Other"
+  "Vivienda",
+  "Servicios",
+  "Transporte",
+  "Alimentación",
+  "Seguros y Salud",
+  "Deudas",
+  "Ropa",
+  "Hogar y electrónica",
+  "Ocio",
+  "Mascotas",
+  "Educación",
+  "Otras"
 ];
 
 const defaultPaymentTypes = [
-  "Credit Card",
-  "Cash",
-  "Debit Card",
-  "Bank Transfer"
+  "Efectivo o Transferencia",
+  "Tarjeta 1",
+  "Tarjeta 2"
 ];
 
 export const addExpense = mutation({

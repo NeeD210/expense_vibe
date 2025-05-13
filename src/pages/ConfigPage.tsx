@@ -3,6 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { SignOutButton } from "../SignOutButton";
 
 type ConfigView = "navigation" | "categories" | "paymentTypes";
 
@@ -41,25 +42,31 @@ export default function ConfigPage() {
 
   if (currentView === "navigation") {
     return (
-      <div className="flex flex-col gap-6">
-        <h2 className="text-2xl font-semibold">Settings</h2>
-        
-        <div className="grid gap-4">
-          <button
-            onClick={() => setCurrentView("categories")}
-            className="p-4 bg-white rounded-lg shadow text-left hover:bg-gray-50 transition-colors"
-          >
-            <h3 className="font-medium">Modify Categories</h3>
-            <p className="text-sm text-gray-500">Add, remove, or edit expense categories</p>
-          </button>
+      <div className="flex flex-col h-[calc(100vh-11rem)]">
+        <div className="flex-1">
+          <h2 className="text-2xl font-semibold mb-6">Settings</h2>
           
-          <button
-            onClick={() => setCurrentView("paymentTypes")}
-            className="p-4 bg-white rounded-lg shadow text-left hover:bg-gray-50 transition-colors"
-          >
-            <h3 className="font-medium">Modify Payment Types</h3>
-            <p className="text-sm text-gray-500">Add, remove, or edit payment methods</p>
-          </button>
+          <div className="grid gap-4">
+            <button
+              onClick={() => setCurrentView("categories")}
+              className="p-4 bg-white rounded-lg shadow text-left hover:bg-gray-50 transition-colors"
+            >
+              <h3 className="font-medium">Modify Categories</h3>
+              <p className="text-sm text-gray-500">Add, remove, or edit expense categories</p>
+            </button>
+            
+            <button
+              onClick={() => setCurrentView("paymentTypes")}
+              className="p-4 bg-white rounded-lg shadow text-left hover:bg-gray-50 transition-colors"
+            >
+              <h3 className="font-medium">Modify Payment Types</h3>
+              <p className="text-sm text-gray-500">Add, remove, or edit payment methods</p>
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-auto border-t pt-6">
+          <SignOutButton />
         </div>
       </div>
     );

@@ -1,9 +1,13 @@
 "use client";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useState } from "react";
+import { useState, Dispatch, SetStateAction } from "react";
 import { toast } from "sonner";
 
-export function SignInForm() {
+interface SignInFormProps {
+  setCurrentPage: Dispatch<SetStateAction<"home" | "analysis" | "config" | "add" | "income" | "manage">>;
+}
+
+export function SignInForm({ setCurrentPage }: SignInFormProps) {
   const { signIn } = useAuthActions();
   const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
   const [submitting, setSubmitting] = useState(false);
@@ -12,19 +16,23 @@ export function SignInForm() {
     <div className="w-full">
       <form
         className="flex flex-col gap-4"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           setSubmitting(true);
           const formData = new FormData(e.target as HTMLFormElement);
           formData.set("flow", flow);
-          void signIn("password", formData).catch((_error) => {
+          try {
+            await signIn("password", formData);
+            // Explicitly set the current page to home after successful authentication
+            setCurrentPage('home');
+          } catch (_error) {
             const toastTitle =
               flow === "signIn"
                 ? "Could not sign in, did you mean to sign up?"
                 : "Could not sign up, did you mean to sign in?";
             toast.error(toastTitle);
             setSubmitting(false);
-          });
+          }
         }}
       >
         <input
@@ -59,14 +67,6 @@ export function SignInForm() {
           </button>
         </div>
       </form>
-      <div className="flex items-center justify-center my-3">
-        <hr className="my-4 grow" />
-        <span className="mx-4 text-slate-400 ">or</span>
-        <hr className="my-4 grow" />
-      </div>
-      <button className="auth-button" onClick={() => void signIn("anonymous")}>
-        Sign in anonymously
-      </button>
     </div>
   );
 }

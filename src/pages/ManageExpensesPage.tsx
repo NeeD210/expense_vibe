@@ -90,75 +90,71 @@ export default function ManageExpensesPage() {
             className="flex items-center justify-between p-4 bg-white rounded-lg shadow"
           >
             {editingExpense?.id === expense._id ? (
-              <div className="flex-1 flex flex-col gap-2">
+              <div className="flex-1 flex flex-col gap-4">
+                <input
+                  type="date"
+                  value={editingExpense.date.toISOString().split('T')[0]}
+                  onChange={e => setEditingExpense({
+                    ...editingExpense,
+                    date: new Date(e.target.value),
+                  })}
+                  className="w-full px-4 py-2 border rounded"
+                />
+                <select
+                  value={editingExpense.paymentType}
+                  onChange={e => setEditingExpense({
+                    ...editingExpense,
+                    paymentType: e.target.value,
+                  })}
+                  className="w-full px-4 py-2 border rounded"
+                >
+                  {paymentTypes.map(pt => (
+                    <option key={pt} value={pt}>{pt}</option>
+                  ))}
+                </select>
+                <select
+                  value={editingExpense.category}
+                  onChange={e => setEditingExpense({
+                    ...editingExpense,
+                    category: e.target.value,
+                  })}
+                  className="w-full px-4 py-2 border rounded"
+                >
+                  {categories.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={editingExpense.description}
+                  onChange={e => setEditingExpense({
+                    ...editingExpense,
+                    description: e.target.value,
+                  })}
+                  placeholder="Description"
+                  className="w-full px-4 py-2 border rounded"
+                />
                 <div className="flex gap-2">
                   <input
-                    type="date"
-                    value={editingExpense.date.toISOString().split('T')[0]}
+                    type="number"
+                    step="0.01"
+                    value={editingExpense.amount}
                     onChange={e => setEditingExpense({
                       ...editingExpense,
-                      date: new Date(e.target.value),
+                      amount: parseFloat(e.target.value),
                     })}
-                    className="px-4 py-2 border rounded"
-                  />
-                  <select
-                    value={editingExpense.paymentType}
-                    onChange={e => setEditingExpense({
-                      ...editingExpense,
-                      paymentType: e.target.value,
-                    })}
-                    className="px-4 py-2 border rounded"
-                  >
-                    {paymentTypes.map(pt => (
-                      <option key={pt} value={pt}>{pt}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={editingExpense.category}
-                    onChange={e => setEditingExpense({
-                      ...editingExpense,
-                      category: e.target.value,
-                    })}
-                    className="px-4 py-2 border rounded"
-                  >
-                    {categories.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={editingExpense.description}
-                    onChange={e => setEditingExpense({
-                      ...editingExpense,
-                      description: e.target.value,
-                    })}
-                    placeholder="Description"
                     className="flex-1 px-4 py-2 border rounded"
                   />
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editingExpense.amount}
-                      onChange={e => setEditingExpense({
-                        ...editingExpense,
-                        amount: parseFloat(e.target.value),
-                      })}
-                      className="w-32 px-4 py-2 border rounded"
-                    />
-                    <input
-                      type="number"
-                      min="1"
-                      value={editingExpense.cuotas}
-                      onChange={e => setEditingExpense({
-                        ...editingExpense,
-                        cuotas: parseInt(e.target.value),
-                      })}
-                      className="w-20 px-4 py-2 border rounded"
-                    />
-                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editingExpense.cuotas}
+                    onChange={e => setEditingExpense({
+                      ...editingExpense,
+                      cuotas: parseInt(e.target.value),
+                    })}
+                    className="w-24 px-4 py-2 border rounded"
+                  />
                 </div>
                 <div className="flex gap-2 justify-end">
                   <button
