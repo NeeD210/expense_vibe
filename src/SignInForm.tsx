@@ -1,7 +1,9 @@
 "use client";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useState, Dispatch, SetStateAction } from "react";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface SignInFormProps {
   setCurrentPage: Dispatch<SetStateAction<"home" | "analysis" | "config" | "add" | "income" | "manage">>;
@@ -11,6 +13,7 @@ export function SignInForm({ setCurrentPage }: SignInFormProps) {
   const { signIn } = useAuthActions();
   const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
   const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
 
   return (
     <div className="w-full">
@@ -30,41 +33,48 @@ export function SignInForm({ setCurrentPage }: SignInFormProps) {
               flow === "signIn"
                 ? "Could not sign in, did you mean to sign up?"
                 : "Could not sign up, did you mean to sign in?";
-            toast.error(toastTitle);
+            toast({
+              variant: "destructive",
+              title: "Authentication Error",
+              description: toastTitle,
+            });
             setSubmitting(false);
           }
         }}
       >
-        <input
-          className="input-field"
+        <Input
           type="email"
           name="email"
           placeholder="Email"
           required
         />
-        <input
-          className="input-field"
+        <Input
           type="password"
           name="password"
           placeholder="Password"
           required
         />
-        <button className="auth-button" type="submit" disabled={submitting}>
+        <Button 
+          type="submit" 
+          disabled={submitting}
+          className="w-full"
+        >
           {flow === "signIn" ? "Sign in" : "Sign up"}
-        </button>
-        <div className="text-center text-sm text-slate-600">
+        </Button>
+        <div className="text-center text-sm text-muted-foreground">
           <span>
             {flow === "signIn"
               ? "Don't have an account? "
               : "Already have an account? "}
           </span>
-          <button
+          <Button
             type="button"
-            className="text-blue-500 cursor-pointer"
+            variant="link"
+            className="p-0 h-auto"
             onClick={() => setFlow(flow === "signIn" ? "signUp" : "signIn")}
           >
             {flow === "signIn" ? "Sign up instead" : "Sign in instead"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

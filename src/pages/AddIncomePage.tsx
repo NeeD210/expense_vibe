@@ -1,7 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState, useEffect, useRef } from "react";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export default function AddIncomePage() {
   const categoriesData = useQuery(api.expenses.getCategories);
@@ -11,11 +17,13 @@ export default function AddIncomePage() {
   const lastTransaction = lastTransactionData;
   const addExpense = useMutation(api.expenses.addExpense);
   const hasInitialized = useRef(false);
+  const { toast } = useToast();
   
   const [date, setDate] = useState(new Date());
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+  const [amountError, setAmountError] = useState(false);
 
   // Set initial values only once when the component mounts and all data is loaded
   useEffect(() => {
@@ -48,7 +56,12 @@ export default function AddIncomePage() {
     
     // Validate amount
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-      toast.error("Please enter a valid amount");
+      setAmountError(true);
+      toast({
+        variant: "destructive",
+        title: "Invalid Amount",
+        description: "Please enter a valid amount",
+      });
       return;
     }
     
@@ -66,82 +79,106 @@ export default function AddIncomePage() {
         transactionType: "income", // Autofilled
       });
       
-      toast.success("Income added");
+      toast({
+        title: "Success",
+        description: "Income added successfully",
+      });
       setDescription("");
       setAmount("");
+      setAmountError(false);
     } catch (error) {
-      toast.error("Failed to add income");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add income",
+      });
+    }
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAmount(value);
+    // Clear error when user starts typing
+    if (amountError) {
+      setAmountError(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Date
-        </label>
-        <input
-          type="date"
-          value={date.toISOString().split('T')[0]}
-          onChange={e => {
-            const newDate = new Date(e.target.value);
-            newDate.setUTCHours(12, 0, 0, 0);
-            setDate(newDate);
-          }}
-          className="w-full px-4 py-2 border rounded"
-        />
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Category
-        </label>
-        <select
-          value={category}
-          onChange={e => setCategory(e.target.value)}
-          className="w-full px-4 py-2 border rounded"
-        >
-          {categories.map(c => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description
-        </label>
-        <input
-          type="text"
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-          className="w-full px-4 py-2 border rounded"
-        />
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Amount
-        </label>
-        <input
-          type="number"
-          step="0.01"
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          className="w-full px-4 py-2 border rounded"
-          required
-          min="0.01"
-        />
-      </div>
-      
-      <button
-        type="submit"
-        className="w-full px-4 py-2 bg-green-500 text-white rounded mt-4"
-      >
-        Add Income
-      </button>
-    </form>
+    <Card>
+      <CardHeader>
+        <CardTitle>Add Income</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="date">Date</Label>
+            <Input
+              id="date"
+              type="date"
+              value={date.toISOString().split('T')[0]}
+              onChange={e => {
+                const newDate = new Date(e.target.value);
+                newDate.setUTCHours(12, 0, 0, 0);
+                setDate(newDate);
+              }}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map(c => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Input
+              id="description"
+              type="text"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Enter description"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="amount" className={cn(amountError && "text-destructive")}>
+              Amount
+            </Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              value={amount}
+              onChange={handleAmountChange}
+              placeholder="0.00"
+              className={cn(
+                amountError && "border-destructive focus-visible:ring-destructive"
+              )}
+            />
+            {amountError && (
+              <p className="text-sm text-destructive">
+                Please enter a valid amount greater than 0
+              </p>
+            )}
+          </div>
+          
+          <Button type="submit" className="w-full">
+            Add Income
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 } 

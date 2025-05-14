@@ -1,12 +1,17 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Doughnut, Chart } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement, SubTitle } from 'chart.js';
+import { Chart } from "react-chartjs-2";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement, SubTitle } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, getYear, getMonth } from "date-fns";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { ExpenseDonutChart } from "@/components/chart-pie-donut-text";
+import { ChartBarLineCombined } from "@/components/chart-bar-line-combined";
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, ChartDataLabels, LineElement, PointElement, SubTitle);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartDataLabels, LineElement, PointElement, SubTitle);
 
 const categoryColors = [
   '#FF6384',
@@ -21,7 +26,7 @@ export default function HomePage() {
   const allExpenses = useQuery(api.expenses.listExpenses) ?? [];
   const allTransactions = useQuery(api.expenses.listAllTransactions) ?? [];
   const allCategories = useQuery(api.expenses.getCategories) ?? [];
-  const [chartType, setChartType] = useState<'doughnut' | 'bar'>('doughnut');
+  const [chartType, setChartType] = useState<'doughnut' | 'combined'>('doughnut');
 
   // --- Doughnut Chart: Current Month Data ---
   const now = new Date();
@@ -45,18 +50,13 @@ export default function HomePage() {
 
   const activeCategoriesDoughnut = allCategories.filter(category => categoryTotalsCurrentMonth[category] > 0);
 
-  const doughnutChartData = {
-    labels: activeCategoriesDoughnut,
-    datasets: [
-      {
-        data: activeCategoriesDoughnut.map(c => categoryTotalsCurrentMonth[c]),
-        backgroundColor: activeCategoriesDoughnut.map((category) => categoryColors[allCategories.indexOf(category) % categoryColors.length]),
-      },
-    ],
-  };
-  // --- End Doughnut Chart Logic ---
+  const doughnutChartData = activeCategoriesDoughnut.map((category, index) => ({
+    category,
+    amount: categoryTotalsCurrentMonth[category],
+    fill: categoryColors[index % categoryColors.length]
+  }));
 
-  // --- Bar Chart: All Expenses Data ---
+  // --- Combined Chart: All Expenses Data ---
   const monthlyExpenses: Record<string, Record<string, number>> = {};
   const monthlyIncomes: Record<string, number> = {};
   const monthLabelsSet = new Set<string>();
@@ -89,165 +89,84 @@ export default function HomePage() {
     sortedMonthLabels.some(month => (monthlyExpenses[month]?.[category] ?? 0) > 0)
   );
 
-  // Calculate max values for proper scaling
-  const maxExpense = sortedMonthLabels.reduce((max, month) => {
-    const monthTotal = Object.values(monthlyExpenses[month] || {}).reduce((sum, amount) => sum + amount, 0);
-    return Math.max(max, monthTotal);
-  }, 0);
+  // Calculate total expenses for each month
+  const monthlyTotals: Record<string, number> = {};
+  sortedMonthLabels.forEach(month => {
+    monthlyTotals[month] = Object.values(monthlyExpenses[month] || {}).reduce((sum, amount) => sum + amount, 0);
+  });
 
-  const maxIncome = sortedMonthLabels.reduce((max, month) => {
-    return Math.max(max, monthlyIncomes[month] || 0);
-  }, 0);
+  // Transform data for the charts
+  const barChartData = sortedMonthLabels.map(month => {
+    const dataPoint: Record<string, any> = {
+      month: format(parseISO(month + "-01"), 'MMM yyyy'),
+      total: monthlyTotals[month],
+      income: monthlyIncomes[month] ?? 0,
+    };
+    
+    activeCategoriesBar.forEach(category => {
+      dataPoint[category] = monthlyExpenses[month]?.[category] ?? 0;
+    });
+    
+    return dataPoint;
+  });
 
-  const maxValue = Math.max(maxExpense, maxIncome);
-  const yAxisMax = Math.ceil(maxValue / 100) * 100; // Round up to nearest hundred
+  // Create chart config
+  const chartConfig = activeCategoriesBar.reduce((acc, category, index) => {
+    acc[category] = {
+      label: category,
+      color: categoryColors[index % categoryColors.length],
+    };
+    return acc;
+  }, {} as Record<string, { label: string; color: string }>);
 
-  const barChartData = {
-    labels: displayMonthLabels,
-    datasets: [
-      ...activeCategoriesBar.map((category) => ({
-        type: 'bar' as const,
-        label: category,
-        data: sortedMonthLabels.map(month => monthlyExpenses[month]?.[category] ?? 0),
-        backgroundColor: categoryColors[allCategories.indexOf(category) % categoryColors.length],
-        stack: 'stack0',
-      })),
-      {
-        type: 'line' as const,
-        label: 'Income',
-        data: sortedMonthLabels.map(month => monthlyIncomes[month] ?? 0),
-        borderColor: '#4CAF50',
-        backgroundColor: '#4CAF50',
-        borderWidth: 2,
-        fill: false,
-        tension: 0.4,
-      }
-    ],
+  // Add income to chart config for the combined chart
+  const combinedChartConfig = {
+    ...chartConfig,
+    income: {
+      label: "Income",
+      color: "#10b981", // Green color for income
+    }
   };
-
-  const barChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: {
-        stacked: true,
-        grid: {
-          display: false
-        }
-      },
-      y: {
-        stacked: true,
-        display: false,
-        beginAtZero: true,
-        suggestedMax: yAxisMax,
-        type: 'linear' as const,
-        grid: {
-          display: false
-        },
-        ticks: {
-          display: false
-        }
-      },
-      y1: {
-        display: false,
-        grid: {
-          display: false
-        },
-        ticks: {
-          display: false
-        }
-      }
-    },
-    plugins: {
-      legend: {
-        position: 'top' as const,
-        labels: {
-          filter: function(legendItem: any) {
-            return activeCategoriesBar.includes(legendItem.text) || legendItem.text === 'Income';
-          }
-        }
-      },
-      title: {
-        display: true,
-        text: 'Monthly Expenses and Income',
-        font: {
-          size: 20,
-          weight: 'bold' as const
-        },
-        color: '#000000'
-      },
-      datalabels: {
-        display: function(context: any) {
-          const dataset = context.dataset;
-          const value = dataset.data[context.dataIndex];
-          // Show label for income line or for the last bar dataset (total expenses)
-          return value > 0 && (dataset.type === 'line' || context.datasetIndex === context.chart.data.datasets.length - 2);
-        },
-        formatter: function(value: number, context: any) {
-          const dataset = context.dataset;
-          if (dataset.type === 'line') {
-            return '$' + Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-          }
-          // For bars, calculate total expenses for this month
-          let total = 0;
-          context.chart.data.datasets.forEach((ds: any) => {
-            if (ds.type === 'bar') {
-              total += ds.data[context.dataIndex] ?? 0;
-            }
-          });
-          return '$' + Math.round(total).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        },
-        color: '#333',
-        anchor: 'end' as const,
-        align: 'top' as const,
-        offset: 4,
-        font: {
-          weight: 'bold' as const,
-          size: 11
-        }
-      },
-    },
-  };
- // --- End Bar Chart Logic ---
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="aspect-square max-w-xs mx-auto">
+      <div className="max-w-2xl mx-auto w-full">
         {chartType === 'doughnut' ? (
-          <Doughnut 
-            data={doughnutChartData} 
-            options={{ 
-              maintainAspectRatio: false,
-              plugins: { 
-                legend: { 
-                  position: 'bottom' as const, 
-                  labels: { 
-                    filter: (legendItem: any) => activeCategoriesDoughnut.includes(legendItem.text)
-                  }
-                },
-                title: {
-                  display: true,
-                  text: `${currentMonthFormatted}\nMonthly Expenses - $${totalCurrentMonthAmount.toFixed(2)}`,
-                  position: 'top' as const,
-                  font: {
-                    size: 16,
-                    weight: 'bold' as const
-                  },
-                  color: '#000000'
-                }
-              }
-            }} 
-          />
+          <div className="aspect-square max-w-xs mx-auto">
+            <ExpenseDonutChart 
+              data={doughnutChartData}
+              title={currentMonthFormatted}
+              subtitle="Expenses"
+              totalAmount={totalCurrentMonthAmount}
+            />
+          </div>
         ) : (
-          <Chart type="bar" data={barChartData} options={barChartOptions} />
+          <div className="max-w-md mx-auto">
+            <ChartBarLineCombined
+              data={barChartData}
+              config={combinedChartConfig}
+              title="Income vs Expenses"
+              description={`${format(parseISO(sortedMonthLabels[0] + "-01"), 'MMM yyyy')} - ${format(parseISO(sortedMonthLabels[sortedMonthLabels.length - 1] + "-01"), 'MMM yyyy')}`}
+            />
+          </div>
         )}
       </div>
-      <button
-        onClick={() => setChartType(prev => prev === 'doughnut' ? 'bar' : 'doughnut')}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 transition-colors mx-auto mt-4"
-      >
-        Switch to {chartType === 'doughnut' ? 'Overall Bar' : 'Current Month Doughnut'} Chart
-      </button>
+      <div className="flex gap-2 justify-center">
+        <Button
+          onClick={() => setChartType('doughnut')}
+          variant={chartType === 'doughnut' ? 'default' : 'outline'}
+          className="mx-auto"
+        >
+          Current Month
+        </Button>
+        <Button
+          onClick={() => setChartType('combined')}
+          variant={chartType === 'combined' ? 'default' : 'outline'}
+          className="mx-auto"
+        >
+          Income vs Expenses
+        </Button>
+      </div>
 
       <div className="flex flex-col gap-2 mt-4">
         {[...allTransactions]
@@ -256,28 +175,32 @@ export default function HomePage() {
             const dateB = typeof b.date === 'string' ? parseISO(b.date) : new Date(b.date);
             return dateB.getTime() - dateA.getTime();
           })
-          .map(expense => (
-          <div
-            key={expense._id}
-            className="flex items-center justify-between p-4 bg-white rounded-lg shadow"
-          >
-            <div>
-              <div className="font-medium">{expense.category}</div>
-              <div className="text-sm text-gray-500">{expense.description}</div>
-              <div className="text-xs text-gray-400">
-                {format(typeof expense.date === 'string' ? parseISO(expense.date) : new Date(expense.date), 'MMM d, yyyy')}
+          .map(transaction => (
+          <Card key={transaction._id}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium text-foreground">{transaction.category}</div>
+                  <div className="text-sm text-muted-foreground">{transaction.description}</div>
+                  <div className="text-xs text-muted-foreground/70">
+                    {format(typeof transaction.date === 'string' ? parseISO(transaction.date) : new Date(transaction.date), 'MMM d, yyyy')}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={cn(
+                    "font-medium",
+                    transaction.transactionType === 'income' ? 'text-green-600' : 'text-foreground'
+                  )}>
+                    {transaction.transactionType === 'income' ? '+' : ''}${transaction.amount.toFixed(2)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {transaction.transactionType === 'expense' && transaction.paymentType}
+                    {transaction.cuotas && transaction.cuotas > 1 && ` - ${transaction.cuotas} cuota${transaction.cuotas > 1 ? 's' : ''}`}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="font-medium text-right">
-              <span className={expense.transactionType === 'income' ? 'text-green-600' : ''}>
-                {expense.transactionType === 'income' ? '+' : ''}${expense.amount.toFixed(2)}
-              </span>
-              <div className="text-sm text-gray-500 font-normal text-right">
-                {expense.transactionType === 'expense' && expense.paymentType}
-                {expense.cuotas && expense.cuotas > 1 && ` - ${expense.cuotas} cuota${expense.cuotas > 1 ? 's' : ''}`}
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

@@ -1,7 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState, useEffect, useRef } from "react";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export default function AddExpensePage() {
   const categoriesData = useQuery(api.expenses.getCategories);
@@ -13,6 +19,7 @@ export default function AddExpensePage() {
   const lastTransaction = lastTransactionData;
   const addExpense = useMutation(api.expenses.addExpense);
   const hasInitialized = useRef(false);
+  const { toast } = useToast();
   
   const [date, setDate] = useState(new Date());
   const [paymentType, setPaymentType] = useState("");
@@ -20,6 +27,7 @@ export default function AddExpensePage() {
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+  const [amountError, setAmountError] = useState(false);
 
   // Set initial values only once when the component mounts and all data is loaded
   useEffect(() => {
@@ -36,15 +44,11 @@ export default function AddExpensePage() {
       return;
     }
 
-    // All data sources are now loaded (they are not undefined anymore).
-    // lastTransactionData can be null or an object.
-    // categoriesData and paymentTypesData will be arrays (possibly empty if query returned empty, but not null).
-
-    if (lastTransaction) { // lastTransactionData is an object (truthy)
+    // All data sources are now loaded
+    if (lastTransaction) {
       setCategory(lastTransaction.category);
       setPaymentType(lastTransaction.paymentType);
-    } else { // lastTransactionData is null (falsy)
-      // Use categoriesData and paymentTypesData directly as they are loaded arrays
+    } else {
       if (categoriesData && categoriesData.length > 0) {
         setCategory(categoriesData[0]);
       }
@@ -52,16 +56,21 @@ export default function AddExpensePage() {
         setPaymentType(paymentTypesData[0]);
       }
     }
-    hasInitialized.current = true; // All sources loaded, prefill decision made.
+    hasInitialized.current = true;
 
-  }, [lastTransaction, categoriesData, paymentTypesData]); // Dependencies trigger effect when data changes
+  }, [lastTransaction, categoriesData, paymentTypesData]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate amount
     if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-      toast.error("Please enter a valid amount");
+      setAmountError(true);
+      toast({
+        variant: "destructive",
+        title: "Invalid Amount",
+        description: "Please enter a valid amount",
+      });
       return;
     }
     
@@ -80,110 +89,131 @@ export default function AddExpensePage() {
         transactionType: "expense",
       });
       
-      toast.success("Expense added");
+      toast({
+        title: "Success",
+        description: "Expense added successfully",
+      });
       setDescription("");
       setAmount("");
+      setAmountError(false);
     } catch (error) {
-      toast.error("Failed to add expense");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add expense",
+      });
+    }
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAmount(value);
+    // Clear error when user starts typing
+    if (amountError) {
+      setAmountError(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Date
-        </label>
-        <input
-          type="date"
-          value={date.toISOString().split('T')[0]}
-          onChange={e => setDate(new Date(e.target.value))}
-          className="w-full px-4 py-2 border rounded"
-        />
-      </div>
-      
-      <div className="flex gap-4">
-        <div className="w-3/4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Payment Type
-          </label>
-          <select
-            value={paymentType}
-            onChange={e => setPaymentType(e.target.value)}
-            className="w-full px-4 py-2 border rounded"
-          >
-            {paymentTypes.map(pt => (
-              <option key={pt} value={pt}>
-                {pt}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        <div className="w-1/4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Cuotas
-          </label>
-          <input
-            type="number"
-            min="1"
-            value={cuotas}
-            onChange={e => setCuotas(e.target.value)}
-            className="w-full px-4 py-2 border rounded"
-          />
-        </div>
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Category
-        </label>
-        <select
-          value={category}
-          onChange={e => setCategory(e.target.value)}
-          className="w-full px-4 py-2 border rounded"
-        >
-          {categories.map(c => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description
-        </label>
-        <input
-          type="text"
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-          className="w-full px-4 py-2 border rounded"
-        />
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Amount
-        </label>
-        <input
-          type="number"
-          step="0.01"
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          className="w-full px-4 py-2 border rounded"
-          required
-          min="0.01"
-        />
-      </div>
-      
-      <button
-        type="submit"
-        className="w-full px-4 py-2 bg-blue-500 text-white rounded mt-4"
-      >
-        Add Expense
-      </button>
-    </form>
+    <Card>
+      <CardHeader>
+        <CardTitle>Add Expense</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="date">Date</Label>
+            <Input
+              id="date"
+              type="date"
+              value={date.toISOString().split('T')[0]}
+              onChange={e => setDate(new Date(e.target.value))}
+            />
+          </div>
+          
+          <div className="grid grid-cols-4 gap-4">
+            <div className="col-span-3 space-y-2">
+              <Label htmlFor="paymentType">Payment Type</Label>
+              <Select value={paymentType} onValueChange={setPaymentType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {paymentTypes.map(pt => (
+                    <SelectItem key={pt} value={pt}>
+                      {pt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="cuotas">Cuotas</Label>
+              <Input
+                id="cuotas"
+                type="number"
+                min="1"
+                value={cuotas}
+                onChange={e => setCuotas(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map(c => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Input
+              id="description"
+              type="text"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Enter description"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="amount" className={cn(amountError && "text-destructive")}>
+              Amount
+            </Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              value={amount}
+              onChange={handleAmountChange}
+              placeholder="0.00"
+              className={cn(
+                amountError && "border-destructive focus-visible:ring-destructive"
+              )}
+            />
+            {amountError && (
+              <p className="text-sm text-destructive">
+                Please enter a valid amount greater than 0
+              </p>
+            )}
+          </div>
+          
+          <Button type="submit" className="w-full">
+            Add Expense
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
