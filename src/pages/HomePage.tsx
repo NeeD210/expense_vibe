@@ -1,12 +1,12 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { Doughnut, Bar } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
+import { Doughnut, Chart } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement, SubTitle } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, getYear, getMonth } from "date-fns";
 import { useState } from "react";
 
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, ChartDataLabels);
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, ChartDataLabels, LineElement, PointElement, SubTitle);
 
 const categoryColors = [
   '#FF6384',
@@ -19,6 +19,7 @@ const categoryColors = [
 
 export default function HomePage() {
   const allExpenses = useQuery(api.expenses.listExpenses) ?? [];
+  const allTransactions = useQuery(api.expenses.listAllTransactions) ?? [];
   const allCategories = useQuery(api.expenses.getCategories) ?? [];
   const [chartType, setChartType] = useState<'doughnut' | 'bar'>('doughnut');
 
@@ -57,20 +58,28 @@ export default function HomePage() {
 
   // --- Bar Chart: All Expenses Data ---
   const monthlyExpenses: Record<string, Record<string, number>> = {};
+  const monthlyIncomes: Record<string, number> = {};
   const monthLabelsSet = new Set<string>();
 
-  allExpenses.forEach(expense => {
-    const dateObj = typeof expense.date === 'string' ? parseISO(expense.date) : new Date(expense.date);
+  allTransactions.forEach(transaction => {
+    const dateObj = typeof transaction.date === 'string' ? parseISO(transaction.date) : new Date(transaction.date);
     const monthYear = format(dateObj, 'yyyy-MM');
     monthLabelsSet.add(monthYear);
 
-    if (!monthlyExpenses[monthYear]) {
-      monthlyExpenses[monthYear] = {};
+    if (transaction.transactionType === 'expense') {
+      if (!monthlyExpenses[monthYear]) {
+        monthlyExpenses[monthYear] = {};
+      }
+      if (!monthlyExpenses[monthYear][transaction.category]) {
+        monthlyExpenses[monthYear][transaction.category] = 0;
+      }
+      monthlyExpenses[monthYear][transaction.category] += transaction.amount;
+    } else if (transaction.transactionType === 'income') {
+      if (!monthlyIncomes[monthYear]) {
+        monthlyIncomes[monthYear] = 0;
+      }
+      monthlyIncomes[monthYear] += transaction.amount;
     }
-    if (!monthlyExpenses[monthYear][expense.category]) {
-      monthlyExpenses[monthYear][expense.category] = 0;
-    }
-    monthlyExpenses[monthYear][expense.category] += expense.amount;
   });
 
   const sortedMonthLabels = Array.from(monthLabelsSet).sort();
@@ -80,13 +89,40 @@ export default function HomePage() {
     sortedMonthLabels.some(month => (monthlyExpenses[month]?.[category] ?? 0) > 0)
   );
 
+  // Calculate max values for proper scaling
+  const maxExpense = sortedMonthLabels.reduce((max, month) => {
+    const monthTotal = Object.values(monthlyExpenses[month] || {}).reduce((sum, amount) => sum + amount, 0);
+    return Math.max(max, monthTotal);
+  }, 0);
+
+  const maxIncome = sortedMonthLabels.reduce((max, month) => {
+    return Math.max(max, monthlyIncomes[month] || 0);
+  }, 0);
+
+  const maxValue = Math.max(maxExpense, maxIncome);
+  const yAxisMax = Math.ceil(maxValue / 100) * 100; // Round up to nearest hundred
+
   const barChartData = {
     labels: displayMonthLabels,
-    datasets: activeCategoriesBar.map((category) => ({
-      label: category,
-      data: sortedMonthLabels.map(month => monthlyExpenses[month]?.[category] ?? 0),
-      backgroundColor: categoryColors[allCategories.indexOf(category) % categoryColors.length],
-    })),
+    datasets: [
+      ...activeCategoriesBar.map((category) => ({
+        type: 'bar' as const,
+        label: category,
+        data: sortedMonthLabels.map(month => monthlyExpenses[month]?.[category] ?? 0),
+        backgroundColor: categoryColors[allCategories.indexOf(category) % categoryColors.length],
+        stack: 'stack0',
+      })),
+      {
+        type: 'line' as const,
+        label: 'Income',
+        data: sortedMonthLabels.map(month => monthlyIncomes[month] ?? 0),
+        borderColor: '#4CAF50',
+        backgroundColor: '#4CAF50',
+        borderWidth: 2,
+        fill: false,
+        tension: 0.4,
+      }
+    ],
   };
 
   const barChartOptions = {
@@ -95,48 +131,79 @@ export default function HomePage() {
     scales: {
       x: {
         stacked: true,
+        grid: {
+          display: false
+        }
       },
       y: {
         stacked: true,
         display: false,
+        beginAtZero: true,
+        suggestedMax: yAxisMax,
+        type: 'linear' as const,
+        grid: {
+          display: false
+        },
+        ticks: {
+          display: false
+        }
       },
+      y1: {
+        display: false,
+        grid: {
+          display: false
+        },
+        ticks: {
+          display: false
+        }
+      }
     },
     plugins: {
       legend: {
         position: 'top' as const,
         labels: {
-            filter: function(legendItem: any) {
-                return activeCategoriesBar.includes(legendItem.text);
-            }
+          filter: function(legendItem: any) {
+            return activeCategoriesBar.includes(legendItem.text) || legendItem.text === 'Income';
+          }
         }
       },
       title: {
         display: true,
-        text: 'Overall Monthly Expenses by Category',
+        text: 'Monthly Expenses and Income',
+        font: {
+          size: 20,
+          weight: 'bold' as const
+        },
+        color: '#000000'
       },
       datalabels: {
         display: function(context: any) {
-          const isLastDataset = context.datasetIndex === context.chart.data.datasets.length - 1;
-          if (!isLastDataset) return false;
-          let total = 0;
-          context.chart.data.datasets.forEach((dataset: any) => {
-            total += dataset.data[context.dataIndex] ?? 0;
-          });
-          return total > 0;
+          const dataset = context.dataset;
+          const value = dataset.data[context.dataIndex];
+          // Show label for income line or for the last bar dataset (total expenses)
+          return value > 0 && (dataset.type === 'line' || context.datasetIndex === context.chart.data.datasets.length - 2);
         },
         formatter: function(value: number, context: any) {
+          const dataset = context.dataset;
+          if (dataset.type === 'line') {
+            return '$' + Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+          }
+          // For bars, calculate total expenses for this month
           let total = 0;
-          context.chart.data.datasets.forEach((dataset: any) => {
-            total += dataset.data[context.dataIndex] ?? 0;
+          context.chart.data.datasets.forEach((ds: any) => {
+            if (ds.type === 'bar') {
+              total += ds.data[context.dataIndex] ?? 0;
+            }
           });
-          return total > 0 ? '$' + total.toFixed(2) : '';
+          return '$' + Math.round(total).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         },
         color: '#333',
         anchor: 'end' as const,
         align: 'top' as const,
-        offset: -5,
+        offset: 4,
         font: {
-            weight: 'bold' as const
+          weight: 'bold' as const,
+          size: 11
         }
       },
     },
@@ -160,14 +227,19 @@ export default function HomePage() {
                 },
                 title: {
                   display: true,
-                  text: [currentMonthFormatted, `Monthly Expenses - $${totalCurrentMonthAmount.toFixed(2)}`],
+                  text: `${currentMonthFormatted}\nMonthly Expenses - $${totalCurrentMonthAmount.toFixed(2)}`,
                   position: 'top' as const,
+                  font: {
+                    size: 16,
+                    weight: 'bold' as const
+                  },
+                  color: '#000000'
                 }
               }
             }} 
           />
         ) : (
-          <Bar data={barChartData} options={barChartOptions} />
+          <Chart type="bar" data={barChartData} options={barChartOptions} />
         )}
       </div>
       <button
@@ -178,7 +250,7 @@ export default function HomePage() {
       </button>
 
       <div className="flex flex-col gap-2 mt-4">
-        {(chartType === 'doughnut' ? currentMonthExpenses : allExpenses).map(expense => (
+        {allTransactions.map(expense => (
           <div
             key={expense._id}
             className="flex items-center justify-between p-4 bg-white rounded-lg shadow"
@@ -191,9 +263,11 @@ export default function HomePage() {
               </div>
             </div>
             <div className="font-medium text-right">
-              ${expense.amount.toFixed(2)}
+              <span className={expense.transactionType === 'income' ? 'text-green-600' : ''}>
+                {expense.transactionType === 'income' ? '+' : ''}${expense.amount.toFixed(2)}
+              </span>
               <div className="text-sm text-gray-500 font-normal text-right">
-                {expense.paymentType}
+                {expense.transactionType === 'expense' && expense.paymentType}
                 {expense.cuotas && expense.cuotas > 1 && ` - ${expense.cuotas} cuota${expense.cuotas > 1 ? 's' : ''}`}
               </div>
             </div>

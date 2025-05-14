@@ -9,7 +9,7 @@ import AnalysisPage from "./pages/AnalysisPage";
 import ConfigPage from "./pages/ConfigPage";
 import AddExpensePage from "./pages/AddExpensePage";
 import AddIncomePage from "./pages/AddIncomePage";
-import ManageExpensesPage from "./pages/ManageExpensesPage";
+import ManageTransactionsPage from "./pages/ManageTransactionsPage";
 import PerFiLogo from "./img/PerFi_logo.png";
 
 export default function App() {
@@ -24,7 +24,7 @@ export default function App() {
     config: ConfigPage,
     add: AddExpensePage,
     income: AddIncomePage,
-    manage: ManageExpensesPage,
+    manage: ManageTransactionsPage,
   };
 
   const CurrentPageComponent = pageComponents[currentPage];

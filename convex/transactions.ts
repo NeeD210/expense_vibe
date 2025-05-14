@@ -1,6 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { api } from "./_generated/api";
 
 const defaultCategories = [
   "Vivienda",
@@ -31,7 +32,6 @@ export const addExpense = mutation({
     description: v.string(),
     amount: v.number(),
     cuotas: v.number(),
-    transactionType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -40,21 +40,8 @@ export const addExpense = mutation({
     return await ctx.db.insert("expenses", {
       userId,
       ...args,
-      transactionType: args.transactionType ?? "expense",
+      transactionType: "expense",
     });
-  },
-});
-
-export const listAllTransactions = query({
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
-    
-    return await ctx.db
-      .query("expenses")
-      .withIndex("by_user", q => q.eq("userId", userId))
-      .order("desc")
-      .collect();
   },
 });
 
@@ -66,21 +53,6 @@ export const listExpenses = query({
     return await ctx.db
       .query("expenses")
       .withIndex("by_user", q => q.eq("userId", userId))
-      .filter(q => q.eq(q.field("transactionType"), "expense"))
-      .order("desc")
-      .collect();
-  },
-});
-
-export const listIncome = query({
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
-    
-    return await ctx.db
-      .query("expenses")
-      .withIndex("by_user", q => q.eq("userId", userId))
-      .filter(q => q.eq(q.field("transactionType"), "income"))
       .order("desc")
       .collect();
   },
@@ -225,7 +197,7 @@ export const setDefaultCuotas = mutation({
   },
 });
 
-export const getLastTransaction = query({
+export const getLastExpense = query({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
@@ -237,44 +209,5 @@ export const getLastTransaction = query({
       .first();
     
     return lastExpense;
-  },
-});
-
-export const setDefaultTransactionType = mutation({
-  args: {},
-  returns: v.number(),
-  handler: async (ctx) => {
-    const expenses = await ctx.db.query("expenses").collect();
-    let updatedCount = 0;
-
-    for (const expense of expenses) {
-      await ctx.db.patch(expense._id, { transactionType: "expense" });
-      updatedCount++;
-    }
-
-    return updatedCount;
-  },
-});
-
-export const forceSetTransactionType = mutation({
-  args: {},
-  returns: v.number(),
-  handler: async (ctx) => {
-    const expenses = await ctx.db.query("expenses").collect();
-    let patched = 0;
-    for (const expense of expenses) {
-      await ctx.db.patch(expense._id, { transactionType: "expense" });
-      patched++;
-    }
-    return patched;
-  },
-});
-
-export const deleteExpenseById = mutation({
-  args: { id: v.id("expenses") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.delete(args.id);
-    return null;
   },
 });

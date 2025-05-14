@@ -11,6 +11,7 @@ const applicationTables = {
     description: v.string(),
     amount: v.number(),
     cuotas: v.optional(v.number()),
+    transactionType: v.string(),
   }).index("by_user", ["userId"]),
   
   userPreferences: defineTable({

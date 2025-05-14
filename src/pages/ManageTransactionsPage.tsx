@@ -183,12 +183,12 @@ export default function ManageTransactionsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="font-medium">
+                  <div className="font-medium text-right">
                     <span className={transaction.transactionType === 'income' ? 'text-green-600' : ''}>
                       {transaction.transactionType === 'income' ? '+' : ''}${transaction.amount.toFixed(2)}
                     </span>
                     <div className="text-sm text-gray-500 font-normal">
-                      {transaction.paymentType}
+                      {transaction.transactionType === 'expense' && transaction.paymentType}
                       {transaction.cuotas && transaction.cuotas > 1 && ` - ${transaction.cuotas} cuota${transaction.cuotas > 1 ? 's' : ''}`}
                     </div>
                   </div>

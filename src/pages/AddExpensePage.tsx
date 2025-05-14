@@ -71,6 +71,7 @@ export default function AddExpensePage() {
         description,
         amount: parseFloat(amount),
         cuotas: parseInt(cuotas),
+        transactionType: "expense",
       });
       
       toast.success("Expense added");
