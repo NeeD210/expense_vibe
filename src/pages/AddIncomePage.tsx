@@ -46,6 +46,12 @@ export default function AddIncomePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate amount
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    
     // Ensure we have valid values before submitting
     const finalCategory = category || categories[0] || "";
     
@@ -77,7 +83,11 @@ export default function AddIncomePage() {
         <input
           type="date"
           value={date.toISOString().split('T')[0]}
-          onChange={e => setDate(new Date(e.target.value))}
+          onChange={e => {
+            const newDate = new Date(e.target.value);
+            newDate.setUTCHours(12, 0, 0, 0);
+            setDate(newDate);
+          }}
           className="w-full px-4 py-2 border rounded"
         />
       </div>
@@ -121,6 +131,8 @@ export default function AddIncomePage() {
           value={amount}
           onChange={e => setAmount(e.target.value)}
           className="w-full px-4 py-2 border rounded"
+          required
+          min="0.01"
         />
       </div>
       

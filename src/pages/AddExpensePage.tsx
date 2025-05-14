@@ -59,6 +59,12 @@ export default function AddExpensePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate amount
+    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    
     // Ensure we have valid values before submitting
     const finalCategory = category || categories[0] || "";
     const finalPaymentType = paymentType || paymentTypes[0] || "";
@@ -167,6 +173,8 @@ export default function AddExpensePage() {
           value={amount}
           onChange={e => setAmount(e.target.value)}
           className="w-full px-4 py-2 border rounded"
+          required
+          min="0.01"
         />
       </div>
       

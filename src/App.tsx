@@ -53,7 +53,14 @@ export default function App() {
       <Authenticated>
         <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-sm p-4 flex justify-between items-center border-b">
           <img src={PerFiLogo} alt="PerFi App Logo" className="h-10" />
-          
+          <div className="absolute left-1/2 transform -translate-x-1/2 text-2xl font-bold">
+            {currentPage === 'home' && 'Home'}
+            {currentPage === 'analysis' && 'Analysis'}
+            {currentPage === 'add' && 'Expense'}
+            {currentPage === 'income' && 'Income'}
+            {currentPage === 'manage' && 'Manage Transactions'}
+            {currentPage === 'config' && 'Settings'}
+          </div>
         </header>
       </Authenticated>
       

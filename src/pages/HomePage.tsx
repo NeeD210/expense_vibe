@@ -250,7 +250,13 @@ export default function HomePage() {
       </button>
 
       <div className="flex flex-col gap-2 mt-4">
-        {allTransactions.map(expense => (
+        {[...allTransactions]
+          .sort((a, b) => {
+            const dateA = typeof a.date === 'string' ? parseISO(a.date) : new Date(a.date);
+            const dateB = typeof b.date === 'string' ? parseISO(b.date) : new Date(b.date);
+            return dateB.getTime() - dateA.getTime();
+          })
+          .map(expense => (
           <div
             key={expense._id}
             className="flex items-center justify-between p-4 bg-white rounded-lg shadow"
