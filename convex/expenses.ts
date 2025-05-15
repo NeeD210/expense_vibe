@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { Id } from "./_generated/dataModel";
 
 const defaultCategories = [
   "Vivienda",
@@ -25,13 +26,13 @@ const defaultPaymentTypes = [
 
 export const addExpense = mutation({
   args: {
-    date: v.number(),
-    paymentType: v.string(),
-    category: v.string(),
-    description: v.string(),
     amount: v.number(),
+    category: v.string(),
     cuotas: v.number(),
-    transactionType: v.optional(v.string()),
+    date: v.number(),
+    description: v.string(),
+    paymentTypeId: v.id("paymentTypes"),
+    transactionType: v.string(),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
@@ -39,8 +40,14 @@ export const addExpense = mutation({
     
     return await ctx.db.insert("expenses", {
       userId,
-      ...args,
-      transactionType: args.transactionType ?? "expense",
+      amount: args.amount,
+      category: args.category,
+      cuotas: args.cuotas,
+      date: args.date,
+      description: args.description,
+      paymentTypeId: args.paymentTypeId,
+      transactionType: args.transactionType,
+      softdelete: false,
     });
   },
 });
@@ -53,6 +60,7 @@ export const listAllTransactions = query({
     return await ctx.db
       .query("expenses")
       .withIndex("by_user", q => q.eq("userId", userId))
+      .filter(q => q.eq(q.field("softdelete"), false))
       .order("desc")
       .collect();
   },
@@ -66,7 +74,10 @@ export const listExpenses = query({
     return await ctx.db
       .query("expenses")
       .withIndex("by_user", q => q.eq("userId", userId))
-      .filter(q => q.eq(q.field("transactionType"), "expense"))
+      .filter(q => q.and(
+        q.eq(q.field("transactionType"), "expense"),
+        q.eq(q.field("softdelete"), false)
+      ))
       .order("desc")
       .collect();
   },
@@ -80,7 +91,10 @@ export const listIncome = query({
     return await ctx.db
       .query("expenses")
       .withIndex("by_user", q => q.eq("userId", userId))
-      .filter(q => q.eq(q.field("transactionType"), "income"))
+      .filter(q => q.and(
+        q.eq(q.field("transactionType"), "income"),
+        q.eq(q.field("softdelete"), false)
+      ))
       .order("desc")
       .collect();
   },
@@ -101,16 +115,51 @@ export const getCategories = query({
 });
 
 export const getPaymentTypes = query({
+  args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
-    if (!userId) return defaultPaymentTypes;
-    
-    const prefs = await ctx.db
-      .query("userPreferences")
+    if (!userId) return [];
+
+    const paymentTypes = await ctx.db
+      .query("paymentTypes")
       .withIndex("by_user", q => q.eq("userId", userId))
-      .unique();
-    
-    return prefs?.paymentTypes ?? defaultPaymentTypes;
+      .filter(q => q.eq(q.field("softdelete"), false))
+      .collect();
+
+    return paymentTypes;
+  },
+});
+
+export const addPaymentType = mutation({
+  args: {
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    return await ctx.db.insert("paymentTypes", {
+      name: args.name,
+      userId,
+      softdelete: false,
+    });
+  },
+});
+
+export const removePaymentType = mutation({
+  args: {
+    id: v.id("paymentTypes"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const paymentType = await ctx.db.get(args.id);
+    if (!paymentType || paymentType.userId !== userId) {
+      throw new Error("Payment type not found");
+    }
+
+    await ctx.db.patch(args.id, { softdelete: true });
   },
 });
 
@@ -146,19 +195,19 @@ export const updatePaymentTypes = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    
+
     const existing = await ctx.db
       .query("userPreferences")
       .withIndex("by_user", q => q.eq("userId", userId))
       .unique();
-    
+
     if (existing) {
       await ctx.db.patch(existing._id, { paymentTypes: args.paymentTypes });
     } else {
       await ctx.db.insert("userPreferences", {
         userId,
-        categories: defaultCategories,
         paymentTypes: args.paymentTypes,
+        categories: defaultCategories,
       });
     }
   },
@@ -176,7 +225,10 @@ export const deleteExpense = mutation({
     if (!expense) throw new Error("Expense not found");
     if (expense.userId !== userId) throw new Error("Not authorized");
     
-    await ctx.db.delete(args.id);
+    await ctx.db.patch(args.id, { 
+      softdelete: true,
+      deletedAt: Date.now()
+    });
   },
 });
 
@@ -184,7 +236,7 @@ export const updateExpense = mutation({
   args: {
     id: v.id("expenses"),
     date: v.number(),
-    paymentType: v.string(),
+    paymentTypeId: v.id("paymentTypes"),
     category: v.string(),
     description: v.string(),
     amount: v.number(),
@@ -200,7 +252,7 @@ export const updateExpense = mutation({
     
     await ctx.db.patch(args.id, {
       date: args.date,
-      paymentType: args.paymentType,
+      paymentTypeId: args.paymentTypeId,
       category: args.category,
       description: args.description,
       amount: args.amount,
@@ -233,6 +285,7 @@ export const getLastTransaction = query({
     const lastExpense = await ctx.db
       .query("expenses")
       .withIndex("by_user", q => q.eq("userId", userId))
+      .filter(q => q.eq(q.field("softdelete"), false))
       .order("desc")
       .first();
     
@@ -274,7 +327,36 @@ export const deleteExpenseById = mutation({
   args: { id: v.id("expenses") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.id);
+    await ctx.db.patch(args.id, { 
+      softdelete: true,
+      deletedAt: Date.now()
+    });
     return null;
+  },
+});
+
+export const initializeDefaultPaymentTypes = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Check if user already has payment types
+    const existingTypes = await ctx.db
+      .query("paymentTypes")
+      .withIndex("by_user", q => q.eq("userId", userId))
+      .filter(q => q.eq(q.field("softdelete"), false))
+      .collect();
+
+    if (existingTypes.length === 0) {
+      // Create default payment types
+      for (const name of defaultPaymentTypes) {
+        await ctx.db.insert("paymentTypes", {
+          name,
+          userId,
+          softdelete: false,
+        });
+      }
+    }
   },
 });

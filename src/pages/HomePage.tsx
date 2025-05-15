@@ -26,7 +26,15 @@ export default function HomePage() {
   const allExpenses = useQuery(api.expenses.listExpenses) ?? [];
   const allTransactions = useQuery(api.expenses.listAllTransactions) ?? [];
   const allCategories = useQuery(api.expenses.getCategories) ?? [];
+  const paymentTypes = useQuery(api.expenses.getPaymentTypes) ?? [];
   const [chartType, setChartType] = useState<'doughnut' | 'combined'>('doughnut');
+
+  // Helper function to get payment type name
+  const getPaymentTypeName = (paymentTypeId: string | undefined) => {
+    if (!paymentTypeId) return "";
+    const paymentType = paymentTypes.find(pt => pt._id === paymentTypeId);
+    return paymentType?.name ?? "";
+  };
 
   // --- Doughnut Chart: Current Month Data ---
   const now = new Date();
@@ -194,7 +202,7 @@ export default function HomePage() {
                     {transaction.transactionType === 'income' ? '+' : ''}${transaction.amount.toFixed(2)}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {transaction.transactionType === 'expense' && transaction.paymentType}
+                    {transaction.transactionType === 'expense' && getPaymentTypeName(transaction.paymentTypeId)}
                     {transaction.cuotas && transaction.cuotas > 1 && ` - ${transaction.cuotas} cuota${transaction.cuotas > 1 ? 's' : ''}`}
                   </div>
                 </div>

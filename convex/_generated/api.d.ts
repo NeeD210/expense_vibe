@@ -16,6 +16,9 @@ import type {
 import type * as auth from "../auth.js";
 import type * as expenses from "../expenses.js";
 import type * as http from "../http.js";
+import type * as migrations_paymentType from "../migrations/paymentType.js";
+import type * as migrations_run from "../migrations/run.js";
+import type * as migrations from "../migrations.js";
 import type * as transactions from "../transactions.js";
 
 /**
@@ -30,6 +33,9 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   expenses: typeof expenses;
   http: typeof http;
+  "migrations/paymentType": typeof migrations_paymentType;
+  "migrations/run": typeof migrations_run;
+  migrations: typeof migrations;
   transactions: typeof transactions;
 }>;
 export declare const api: FilterApi<

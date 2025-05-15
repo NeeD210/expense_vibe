@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { api } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 
 const defaultCategories = [
   "Vivienda",
@@ -73,15 +74,16 @@ export const getCategories = query({
 });
 
 export const getPaymentTypes = query({
+  args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return defaultPaymentTypes;
-    
+
     const prefs = await ctx.db
       .query("userPreferences")
       .withIndex("by_user", q => q.eq("userId", userId))
       .unique();
-    
+
     return prefs?.paymentTypes ?? defaultPaymentTypes;
   },
 });
@@ -118,19 +120,19 @@ export const updatePaymentTypes = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    
+
     const existing = await ctx.db
       .query("userPreferences")
       .withIndex("by_user", q => q.eq("userId", userId))
       .unique();
-    
+
     if (existing) {
       await ctx.db.patch(existing._id, { paymentTypes: args.paymentTypes });
     } else {
       await ctx.db.insert("userPreferences", {
         userId,
-        categories: defaultCategories,
         paymentTypes: args.paymentTypes,
+        categories: defaultCategories,
       });
     }
   },
@@ -209,5 +211,32 @@ export const getLastExpense = query({
       .first();
     
     return lastExpense;
+  },
+});
+
+export const addTransaction = mutation({
+  args: {
+    amount: v.number(),
+    category: v.string(),
+    cuotas: v.number(),
+    date: v.number(),
+    description: v.string(),
+    paymentTypeId: v.id("paymentTypes"),
+    transactionType: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    await ctx.db.insert("expenses", {
+      amount: args.amount,
+      category: args.category,
+      cuotas: args.cuotas,
+      date: args.date,
+      description: args.description,
+      paymentTypeId: args.paymentTypeId,
+      transactionType: args.transactionType,
+      userId,
+    });
   },
 });

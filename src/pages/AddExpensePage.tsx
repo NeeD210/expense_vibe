@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Id } from "../../convex/_generated/dataModel";
 
 export default function AddExpensePage() {
   const categoriesData = useQuery(api.expenses.getCategories);
@@ -22,7 +23,7 @@ export default function AddExpensePage() {
   const { toast } = useToast();
   
   const [date, setDate] = useState(new Date());
-  const [paymentType, setPaymentType] = useState("");
+  const [paymentTypeId, setPaymentTypeId] = useState<Id<"paymentTypes"> | "">("");
   const [cuotas, setCuotas] = useState("1");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -47,13 +48,13 @@ export default function AddExpensePage() {
     // All data sources are now loaded
     if (lastTransaction) {
       setCategory(lastTransaction.category);
-      setPaymentType(lastTransaction.paymentType);
+      setPaymentTypeId(lastTransaction.paymentTypeId ?? "");
     } else {
       if (categoriesData && categoriesData.length > 0) {
         setCategory(categoriesData[0]);
       }
       if (paymentTypesData && paymentTypesData.length > 0) {
-        setPaymentType(paymentTypesData[0]);
+        setPaymentTypeId(paymentTypesData[0]._id);
       }
     }
     hasInitialized.current = true;
@@ -76,12 +77,21 @@ export default function AddExpensePage() {
     
     // Ensure we have valid values before submitting
     const finalCategory = category || categories[0] || "";
-    const finalPaymentType = paymentType || paymentTypes[0] || "";
+    const finalPaymentTypeId = paymentTypeId || (paymentTypes[0]?._id ?? "");
+    
+    if (!finalPaymentTypeId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a payment type",
+      });
+      return;
+    }
     
     try {
       await addExpense({
         date: date.getTime(),
-        paymentType: finalPaymentType,
+        paymentTypeId: finalPaymentTypeId,
         category: finalCategory,
         description,
         amount: parseFloat(amount),
@@ -134,14 +144,17 @@ export default function AddExpensePage() {
           <div className="grid grid-cols-4 gap-4">
             <div className="col-span-3 space-y-2">
               <Label htmlFor="paymentType">Payment Type</Label>
-              <Select value={paymentType} onValueChange={setPaymentType}>
+              <Select 
+                value={paymentTypeId} 
+                onValueChange={(value) => setPaymentTypeId(value as Id<"paymentTypes"> | "")}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment type" />
                 </SelectTrigger>
                 <SelectContent>
                   {paymentTypes.map(pt => (
-                    <SelectItem key={pt} value={pt}>
-                      {pt}
+                    <SelectItem key={pt._id} value={pt._id}>
+                      {pt.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -4,6 +4,8 @@ import { useState, Dispatch, SetStateAction } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
 
 interface SignInFormProps {
   setCurrentPage: Dispatch<SetStateAction<"home" | "analysis" | "config" | "add" | "income" | "manage">>;
@@ -14,6 +16,7 @@ export function SignInForm({ setCurrentPage }: SignInFormProps) {
   const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const createUser = useMutation(api.auth.createUser);
 
   return (
     <div className="w-full">
@@ -26,6 +29,10 @@ export function SignInForm({ setCurrentPage }: SignInFormProps) {
           formData.set("flow", flow);
           try {
             await signIn("password", formData);
+            if (flow === "signUp") {
+              const email = formData.get("email") as string;
+              await createUser({ email });
+            }
             // Explicitly set the current page to home after successful authentication
             setCurrentPage('home');
           } catch (_error) {

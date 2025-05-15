@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,15 +8,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Id } from "../../convex/_generated/dataModel";
 
 export default function AddIncomePage() {
   const categoriesData = useQuery(api.expenses.getCategories);
-  const lastTransactionData = useQuery(api.expenses.getLastTransaction);
+  const paymentTypesData = useQuery(api.expenses.getPaymentTypes);
   
   const categories = categoriesData ?? [];
-  const lastTransaction = lastTransactionData;
+  const paymentTypes = paymentTypesData ?? [];
   const addExpense = useMutation(api.expenses.addExpense);
-  const hasInitialized = useRef(false);
   const { toast } = useToast();
   
   const [date, setDate] = useState(new Date());
@@ -24,32 +24,7 @@ export default function AddIncomePage() {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [amountError, setAmountError] = useState(false);
-
-  // Set initial values only once when the component mounts and all data is loaded
-  useEffect(() => {
-    if (hasInitialized.current) {
-      return;
-    }
-
-    const isLastTransactionLoading = typeof lastTransactionData === 'undefined';
-    const areCategoriesLoading = typeof categoriesData === 'undefined';
-
-    // Wait until all relevant data sources for prefilling have loaded
-    if (isLastTransactionLoading || areCategoriesLoading) {
-      return;
-    }
-
-    // All data sources are now loaded
-    if (lastTransaction) {
-      setCategory(lastTransaction.category);
-    } else {
-      if (categoriesData && categoriesData.length > 0) {
-        setCategory(categoriesData[0]);
-      }
-    }
-    hasInitialized.current = true;
-
-  }, [lastTransaction, categoriesData]);
+  const [paymentTypeId, setPaymentTypeId] = useState<Id<"paymentTypes"> | "">("");
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,16 +42,26 @@ export default function AddIncomePage() {
     
     // Ensure we have valid values before submitting
     const finalCategory = category || categories[0] || "";
+    const finalPaymentTypeId = paymentTypeId || (paymentTypes[0]?._id ?? "");
+    
+    if (!finalPaymentTypeId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No payment types available",
+      });
+      return;
+    }
     
     try {
       await addExpense({
         date: date.getTime(),
-        paymentType: "Cash", // Autofilled
+        paymentTypeId: finalPaymentTypeId,
         category: finalCategory,
         description,
         amount: parseFloat(amount),
-        cuotas: 1, // Autofilled
-        transactionType: "income", // Autofilled
+        cuotas: 1,
+        transactionType: "income",
       });
       
       toast({
@@ -135,6 +120,25 @@ export default function AddIncomePage() {
                 {categories.map(c => (
                   <SelectItem key={c} value={c}>
                     {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="paymentType">Payment Type</Label>
+            <Select 
+              value={paymentTypeId} 
+              onValueChange={(value) => setPaymentTypeId(value as Id<"paymentTypes"> | "")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a payment type" />
+              </SelectTrigger>
+              <SelectContent>
+                {paymentTypes.map(pt => (
+                  <SelectItem key={pt._id} value={pt._id}>
+                    {pt.name}
                   </SelectItem>
                 ))}
               </SelectContent>

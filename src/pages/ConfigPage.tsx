@@ -1,12 +1,13 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { SignOutButton } from "../SignOutButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Id } from "../../convex/_generated/dataModel";
 
 type ConfigView = "navigation" | "categories" | "paymentTypes";
 
@@ -15,10 +16,32 @@ export default function ConfigPage() {
   const categories = useQuery(api.expenses.getCategories) ?? [];
   const paymentTypes = useQuery(api.expenses.getPaymentTypes) ?? [];
   const updateCategories = useMutation(api.expenses.updateCategories);
-  const updatePaymentTypes = useMutation(api.expenses.updatePaymentTypes);
+  const addPaymentType = useMutation(api.expenses.addPaymentType);
+  const removePaymentType = useMutation(api.expenses.removePaymentType);
+  const initializeDefaultPaymentTypes = useMutation(api.expenses.initializeDefaultPaymentTypes);
   const [newCategory, setNewCategory] = useState("");
   const [newPaymentType, setNewPaymentType] = useState("");
   const { toast } = useToast();
+
+  // Initialize default payment types if none exist
+  useEffect(() => {
+    const initializePaymentTypes = async () => {
+      if (paymentTypes.length === 0) {
+        try {
+          await initializeDefaultPaymentTypes();
+          toast({ title: "Default payment types initialized" });
+        } catch (error) {
+          console.error("Failed to initialize default payment types:", error);
+          toast({ 
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to initialize default payment types"
+          });
+        }
+      }
+    };
+    initializePaymentTypes();
+  }, [paymentTypes.length, initializeDefaultPaymentTypes, toast]);
 
   const handleAddCategory = () => {
     if (!newCategory.trim()) return;
@@ -32,16 +55,32 @@ export default function ConfigPage() {
     toast({ title: "Category removed" });
   };
 
-  const handleAddPaymentType = () => {
+  const handleAddPaymentType = async () => {
     if (!newPaymentType.trim()) return;
-    updatePaymentTypes({ paymentTypes: [...paymentTypes, newPaymentType.trim()] });
-    setNewPaymentType("");
-    toast({ title: "Payment type added" });
+    try {
+      await addPaymentType({ name: newPaymentType.trim() });
+      setNewPaymentType("");
+      toast({ title: "Payment type added" });
+    } catch (error) {
+      toast({ 
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add payment type"
+      });
+    }
   };
   
-  const handleRemovePaymentType = (paymentType: string) => {
-    updatePaymentTypes({ paymentTypes: paymentTypes.filter(p => p !== paymentType) });
-    toast({ title: "Payment type removed" });
+  const handleRemovePaymentType = async (id: Id<"paymentTypes">) => {
+    try {
+      await removePaymentType({ id });
+      toast({ title: "Payment type removed" });
+    } catch (error) {
+      toast({ 
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to remove payment type"
+      });
+    }
   };
 
   if (currentView === "navigation") {
@@ -143,13 +182,13 @@ export default function ConfigPage() {
           </div>
           <div className="flex flex-col gap-2">
             {paymentTypes.map(paymentType => (
-              <Card key={paymentType}>
+              <Card key={paymentType._id}>
                 <CardContent className="flex items-center justify-between p-4">
-                  <span>{paymentType}</span>
+                  <span>{paymentType.name}</span>
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleRemovePaymentType(paymentType)}
+                    onClick={() => handleRemovePaymentType(paymentType._id)}
                   >
                     Remove
                   </Button>
