@@ -33,6 +33,7 @@ export default defineSchema({
   expenses: defineTable({
     amount: v.float64(),
     category: v.string(),
+    categoryId: v.optional(v.id("categories")),
     cuotas: v.float64(),
     date: v.float64(),
     description: v.string(),
@@ -50,7 +51,7 @@ export default defineSchema({
     softdelete: v.optional(v.boolean()),
   }).index("by_user", ["userId"]),
   userPreferences: defineTable({
-    categories: v.array(v.string()),
+    categories: v.optional(v.array(v.string())),
     paymentTypes: v.array(v.string()),
     userId: v.id("users"),
     deletedAt: v.optional(v.number()),
@@ -61,4 +62,11 @@ export default defineSchema({
     isAnonymous: v.optional(v.boolean()),
     softdelete: v.optional(v.boolean()),
   }),
+  categories: defineTable({
+    name: v.string(),
+    userId: v.id("users"),
+    color: v.optional(v.string()),
+    icon: v.optional(v.string()),
+    softdelete: v.optional(v.boolean()),
+  }).index("by_user", ["userId"]),
 });

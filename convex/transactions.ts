@@ -64,12 +64,17 @@ export const getCategories = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return defaultCategories;
     
-    const prefs = await ctx.db
-      .query("userPreferences")
+    const categories = await ctx.db
+      .query("categories")
       .withIndex("by_user", q => q.eq("userId", userId))
-      .unique();
+      .filter(q => q.eq(q.field("softdelete"), false))
+      .collect();
     
-    return prefs?.categories ?? defaultCategories;
+    if (categories.length > 0) {
+      return categories.map(c => c.name);
+    }
+    
+    return defaultCategories;
   },
 });
 
@@ -96,19 +101,29 @@ export const updateCategories = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     
-    const existing = await ctx.db
-      .query("userPreferences")
+    // Get existing categories
+    const existingCategories = await ctx.db
+      .query("categories")
       .withIndex("by_user", q => q.eq("userId", userId))
-      .unique();
+      .collect();
     
-    if (existing) {
-      await ctx.db.patch(existing._id, { categories: args.categories });
-    } else {
-      await ctx.db.insert("userPreferences", {
-        userId,
-        categories: args.categories,
-        paymentTypes: defaultPaymentTypes,
-      });
+    // Soft delete categories that are no longer in the list
+    for (const category of existingCategories) {
+      if (!args.categories.includes(category.name)) {
+        await ctx.db.patch(category._id, { softdelete: true });
+      }
+    }
+    
+    // Create new categories
+    for (const categoryName of args.categories) {
+      const exists = existingCategories.some(c => c.name === categoryName);
+      if (!exists) {
+        await ctx.db.insert("categories", {
+          name: categoryName,
+          userId,
+          softdelete: false,
+        });
+      }
     }
   },
 });
@@ -132,7 +147,6 @@ export const updatePaymentTypes = mutation({
       await ctx.db.insert("userPreferences", {
         userId,
         paymentTypes: args.paymentTypes,
-        categories: defaultCategories,
       });
     }
   },

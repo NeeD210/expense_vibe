@@ -87,6 +87,15 @@ export default function AddExpensePage() {
       });
       return;
     }
+
+    if (!finalCategory) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a category",
+      });
+      return;
+    }
     
     try {
       await addExpense({
@@ -107,10 +116,11 @@ export default function AddExpensePage() {
       setAmount("");
       setAmountError(false);
     } catch (error) {
+      console.error("Failed to add expense:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to add expense",
+        description: "Failed to add expense. Please try again.",
       });
     }
   };

@@ -52,6 +52,15 @@ export default function AddIncomePage() {
       });
       return;
     }
+
+    if (!finalCategory) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a category",
+      });
+      return;
+    }
     
     try {
       await addExpense({
@@ -72,10 +81,11 @@ export default function AddIncomePage() {
       setAmount("");
       setAmountError(false);
     } catch (error) {
+      console.error("Failed to add income:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to add income",
+        description: "Failed to add income. Please try again.",
       });
     }
   };

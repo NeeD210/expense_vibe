@@ -16,6 +16,9 @@ import type {
 import type * as auth from "../auth.js";
 import type * as expenses from "../expenses.js";
 import type * as http from "../http.js";
+import type * as migrations_category from "../migrations/category.js";
+import type * as migrations_expenseCategory from "../migrations/expenseCategory.js";
+import type * as migrations_index from "../migrations/index.js";
 import type * as migrations_paymentType from "../migrations/paymentType.js";
 import type * as migrations_run from "../migrations/run.js";
 import type * as migrations from "../migrations.js";
@@ -33,6 +36,9 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   expenses: typeof expenses;
   http: typeof http;
+  "migrations/category": typeof migrations_category;
+  "migrations/expenseCategory": typeof migrations_expenseCategory;
+  "migrations/index": typeof migrations_index;
   "migrations/paymentType": typeof migrations_paymentType;
   "migrations/run": typeof migrations_run;
   migrations: typeof migrations;

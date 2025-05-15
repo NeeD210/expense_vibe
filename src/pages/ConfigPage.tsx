@@ -19,13 +19,27 @@ export default function ConfigPage() {
   const addPaymentType = useMutation(api.expenses.addPaymentType);
   const removePaymentType = useMutation(api.expenses.removePaymentType);
   const initializeDefaultPaymentTypes = useMutation(api.expenses.initializeDefaultPaymentTypes);
+  const initializeDefaultCategories = useMutation(api.expenses.initializeDefaultCategories);
   const [newCategory, setNewCategory] = useState("");
   const [newPaymentType, setNewPaymentType] = useState("");
   const { toast } = useToast();
 
-  // Initialize default payment types if none exist
+  // Initialize default categories and payment types if none exist
   useEffect(() => {
-    const initializePaymentTypes = async () => {
+    const initializeDefaults = async () => {
+      if (categories.length === 0) {
+        try {
+          await initializeDefaultCategories();
+          toast({ title: "Default categories initialized" });
+        } catch (error) {
+          console.error("Failed to initialize default categories:", error);
+          toast({ 
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to initialize default categories"
+          });
+        }
+      }
       if (paymentTypes.length === 0) {
         try {
           await initializeDefaultPaymentTypes();
@@ -40,19 +54,37 @@ export default function ConfigPage() {
         }
       }
     };
-    initializePaymentTypes();
-  }, [paymentTypes.length, initializeDefaultPaymentTypes, toast]);
+    initializeDefaults();
+  }, [categories.length, paymentTypes.length, initializeDefaultCategories, initializeDefaultPaymentTypes, toast]);
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!newCategory.trim()) return;
-    updateCategories({ categories: [...categories, newCategory.trim()] });
-    setNewCategory("");
-    toast({ title: "Category added" });
+    try {
+      await updateCategories({ categories: [...categories, newCategory.trim()] });
+      setNewCategory("");
+      toast({ title: "Category added" });
+    } catch (error) {
+      console.error("Failed to add category:", error);
+      toast({ 
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add category"
+      });
+    }
   };
   
-  const handleRemoveCategory = (category: string) => {
-    updateCategories({ categories: categories.filter(c => c !== category) });
-    toast({ title: "Category removed" });
+  const handleRemoveCategory = async (category: string) => {
+    try {
+      await updateCategories({ categories: categories.filter(c => c !== category) });
+      toast({ title: "Category removed" });
+    } catch (error) {
+      console.error("Failed to remove category:", error);
+      toast({ 
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to remove category"
+      });
+    }
   };
 
   const handleAddPaymentType = async () => {
