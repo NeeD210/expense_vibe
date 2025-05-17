@@ -27,7 +27,7 @@ const defaultPaymentTypes = [
 export const addExpense = mutation({
   args: {
     amount: v.number(),
-    category: v.string(),
+    categoryId: v.id("categories"),
     cuotas: v.number(),
     date: v.number(),
     description: v.string(),
@@ -38,10 +38,15 @@ export const addExpense = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     
+    // Get the category name from the category ID
+    const category = await ctx.db.get(args.categoryId);
+    if (!category) throw new Error("Category not found");
+    
     return await ctx.db.insert("expenses", {
       userId,
       amount: args.amount,
-      category: args.category,
+      category: category.name,
+      categoryId: args.categoryId,
       cuotas: args.cuotas,
       date: args.date,
       description: args.description,
@@ -277,7 +282,7 @@ export const updateExpense = mutation({
     id: v.id("expenses"),
     date: v.number(),
     paymentTypeId: v.id("paymentTypes"),
-    category: v.string(),
+    categoryId: v.id("categories"),
     description: v.string(),
     amount: v.number(),
     cuotas: v.number(),
@@ -290,10 +295,15 @@ export const updateExpense = mutation({
     if (!expense) throw new Error("Expense not found");
     if (expense.userId !== userId) throw new Error("Not authorized");
     
+    // Get the category name from the category ID
+    const category = await ctx.db.get(args.categoryId);
+    if (!category) throw new Error("Category not found");
+    
     await ctx.db.patch(args.id, {
       date: args.date,
       paymentTypeId: args.paymentTypeId,
-      category: args.category,
+      categoryId: args.categoryId,
+      category: category.name,
       description: args.description,
       amount: args.amount,
       cuotas: args.cuotas,
@@ -398,5 +408,20 @@ export const initializeDefaultPaymentTypes = mutation({
         });
       }
     }
+  },
+});
+
+export const getCategoriesWithIds = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    
+    const categories = await ctx.db
+      .query("categories")
+      .withIndex("by_user", q => q.eq("userId", userId))
+      .filter(q => q.eq(q.field("softdelete"), false))
+      .collect();
+    
+    return categories;
   },
 });

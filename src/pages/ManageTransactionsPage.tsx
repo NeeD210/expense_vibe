@@ -14,7 +14,7 @@ interface EditingTransaction {
   id: Id<"expenses">;
   date: Date;
   paymentTypeId: Id<"paymentTypes"> | undefined;
-  category: string;
+  categoryId: Id<"categories"> | undefined;
   description: string;
   amount: string;
   cuotas: number;
@@ -22,7 +22,7 @@ interface EditingTransaction {
 
 export default function ManageTransactionsPage() {
   const transactionsData = useQuery(api.expenses.listAllTransactions);
-  const categoriesData = useQuery(api.expenses.getCategories);
+  const categoriesData = useQuery(api.expenses.getCategoriesWithIds);
   const paymentTypesData = useQuery(api.expenses.getPaymentTypes);
   const updateExpense = useMutation(api.expenses.updateExpense);
   const deleteExpense = useMutation(api.expenses.deleteExpense);
@@ -40,7 +40,7 @@ export default function ManageTransactionsPage() {
       id: transaction._id,
       date: new Date(transaction.date),
       paymentTypeId: transaction.paymentTypeId,
-      category: transaction.category,
+      categoryId: transaction.categoryId,
       description: transaction.description,
       amount: transaction.amount.toString(),
       cuotas: transaction.cuotas,
@@ -60,13 +60,18 @@ export default function ManageTransactionsPage() {
       setAmountError("Please select a payment type");
       return;
     }
+
+    if (!editingTransaction.categoryId) {
+      setAmountError("Please select a category");
+      return;
+    }
     
     try {
       await updateExpense({
         id: editingTransaction.id,
         date: editingTransaction.date.getTime(),
         paymentTypeId: editingTransaction.paymentTypeId,
-        category: editingTransaction.category,
+        categoryId: editingTransaction.categoryId,
         description: editingTransaction.description,
         amount,
         cuotas: editingTransaction.cuotas,
@@ -112,6 +117,12 @@ export default function ManageTransactionsPage() {
     return paymentType?.name ?? "";
   };
 
+  const getCategoryName = (categoryId: Id<"categories"> | undefined) => {
+    if (!categoryId) return "";
+    const category = categories.find(c => c._id === categoryId);
+    return category?.name ?? "";
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -141,16 +152,16 @@ export default function ManageTransactionsPage() {
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
                       <Select 
-                        value={editingTransaction.category} 
-                        onValueChange={value => setEditingTransaction({ ...editingTransaction, category: value })}
+                        value={editingTransaction.categoryId} 
+                        onValueChange={value => setEditingTransaction({ ...editingTransaction, categoryId: value as Id<"categories"> })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
                         <SelectContent>
                           {categories.map(c => (
-                            <SelectItem key={c} value={c}>
-                              {c}
+                            <SelectItem key={c._id} value={c._id}>
+                              {c.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -235,7 +246,7 @@ export default function ManageTransactionsPage() {
                   <div className="flex-1">
                     <p className="font-medium">{transaction.description}</p>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(transaction.date).toLocaleDateString()} • {transaction.category} • {getPaymentTypeName(transaction.paymentTypeId)}
+                      {new Date(transaction.date).toLocaleDateString()} • {getCategoryName(transaction.categoryId)} • {getPaymentTypeName(transaction.paymentTypeId)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

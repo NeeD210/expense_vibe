@@ -9,7 +9,7 @@ import { Id } from "../../convex/_generated/dataModel";
 type EditingTransaction = {
   id: Id<"expenses">;
   date: Date;
-  paymentType: string;
+  paymentTypeId: Id<"paymentTypes">;
   category: string;
   description: string;
   amount: number;
@@ -39,7 +39,7 @@ export default function ManageTransactionsPage() {
     setEditingTransaction({
       id: transaction._id,
       date: new Date(transaction.date),
-      paymentType: transaction.paymentType,
+      paymentTypeId: transaction.paymentTypeId,
       category: transaction.category,
       description: transaction.description,
       amount: transaction.amount,
@@ -55,7 +55,7 @@ export default function ManageTransactionsPage() {
       await updateExpense({
         id: editingTransaction.id,
         date: editingTransaction.date.getTime(),
-        paymentType: editingTransaction.paymentType,
+        paymentTypeId: editingTransaction.paymentTypeId,
         category: editingTransaction.category,
         description: editingTransaction.description,
         amount: editingTransaction.amount,
@@ -103,15 +103,15 @@ export default function ManageTransactionsPage() {
                   className="w-full px-4 py-2 border rounded"
                 />
                 <select
-                  value={editingTransaction.paymentType}
+                  value={editingTransaction.paymentTypeId}
                   onChange={e => setEditingTransaction({
                     ...editingTransaction,
-                    paymentType: e.target.value,
+                    paymentTypeId: e.target.value as Id<"paymentTypes">,
                   })}
                   className="w-full px-4 py-2 border rounded"
                 >
                   {paymentTypes.map(pt => (
-                    <option key={pt} value={pt}>{pt}</option>
+                    <option key={pt._id} value={pt._id}>{pt.name}</option>
                   ))}
                 </select>
                 <select
@@ -188,7 +188,7 @@ export default function ManageTransactionsPage() {
                       {transaction.transactionType === 'income' ? '+' : ''}${transaction.amount.toFixed(2)}
                     </span>
                     <div className="text-sm text-gray-500 font-normal">
-                      {transaction.paymentType}
+                      {paymentTypes.find(pt => pt._id === transaction.paymentTypeId)?.name ?? 'Unknown'}
                       {transaction.cuotas && transaction.cuotas > 1 && ` - ${transaction.cuotas} cuota${transaction.cuotas > 1 ? 's' : ''}`}
                     </div>
                   </div>

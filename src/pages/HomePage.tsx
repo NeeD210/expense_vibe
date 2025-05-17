@@ -25,7 +25,7 @@ const categoryColors = [
 export default function HomePage() {
   const allExpenses = useQuery(api.expenses.listExpenses) ?? [];
   const allTransactions = useQuery(api.expenses.listAllTransactions) ?? [];
-  const allCategories = useQuery(api.expenses.getCategories) ?? [];
+  const allCategories = useQuery(api.expenses.getCategoriesWithIds) ?? [];
   const paymentTypes = useQuery(api.expenses.getPaymentTypes) ?? [];
   const [chartType, setChartType] = useState<'doughnut' | 'combined'>('doughnut');
 
@@ -34,6 +34,13 @@ export default function HomePage() {
     if (!paymentTypeId) return "";
     const paymentType = paymentTypes.find(pt => pt._id === paymentTypeId);
     return paymentType?.name ?? "";
+  };
+
+  // Helper function to get category name
+  const getCategoryName = (categoryId: string | undefined) => {
+    if (!categoryId) return "";
+    const category = allCategories.find(c => c._id === categoryId);
+    return category?.name ?? "";
   };
 
   // --- Doughnut Chart: Current Month Data ---
@@ -50,17 +57,17 @@ export default function HomePage() {
   const totalCurrentMonthAmount = currentMonthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   const categoryTotalsCurrentMonth = allCategories.reduce((acc, category) => {
-    acc[category] = currentMonthExpenses
-      .filter(e => e.category === category)
+    acc[category.name] = currentMonthExpenses
+      .filter(e => e.categoryId === category._id)
       .reduce((sum, e) => sum + e.amount, 0);
     return acc;
   }, {} as Record<string, number>);
 
-  const activeCategoriesDoughnut = allCategories.filter(category => categoryTotalsCurrentMonth[category] > 0);
+  const activeCategoriesDoughnut = allCategories.filter(category => categoryTotalsCurrentMonth[category.name] > 0);
 
   const doughnutChartData = activeCategoriesDoughnut.map((category, index) => ({
-    category,
-    amount: categoryTotalsCurrentMonth[category],
+    category: category.name,
+    amount: categoryTotalsCurrentMonth[category.name],
     fill: categoryColors[index % categoryColors.length]
   }));
 
@@ -78,10 +85,11 @@ export default function HomePage() {
       if (!monthlyExpenses[monthYear]) {
         monthlyExpenses[monthYear] = {};
       }
-      if (!monthlyExpenses[monthYear][transaction.category]) {
-        monthlyExpenses[monthYear][transaction.category] = 0;
+      const categoryName = getCategoryName(transaction.categoryId);
+      if (!monthlyExpenses[monthYear][categoryName]) {
+        monthlyExpenses[monthYear][categoryName] = 0;
       }
-      monthlyExpenses[monthYear][transaction.category] += transaction.amount;
+      monthlyExpenses[monthYear][categoryName] += transaction.amount;
     } else if (transaction.transactionType === 'income') {
       if (!monthlyIncomes[monthYear]) {
         monthlyIncomes[monthYear] = 0;
@@ -94,7 +102,7 @@ export default function HomePage() {
   const displayMonthLabels = sortedMonthLabels.map(my => format(parseISO(my + "-01"), 'MMM yyyy'));
   
   const activeCategoriesBar = allCategories.filter(category => 
-    sortedMonthLabels.some(month => (monthlyExpenses[month]?.[category] ?? 0) > 0)
+    sortedMonthLabels.some(month => (monthlyExpenses[month]?.[category.name] ?? 0) > 0)
   );
 
   // Calculate total expenses for each month
@@ -112,7 +120,7 @@ export default function HomePage() {
     };
     
     activeCategoriesBar.forEach(category => {
-      dataPoint[category] = monthlyExpenses[month]?.[category] ?? 0;
+      dataPoint[category.name] = monthlyExpenses[month]?.[category.name] ?? 0;
     });
     
     return dataPoint;
@@ -120,8 +128,8 @@ export default function HomePage() {
 
   // Create chart config
   const chartConfig = activeCategoriesBar.reduce((acc, category, index) => {
-    acc[category] = {
-      label: category,
+    acc[category.name] = {
+      label: category.name,
       color: categoryColors[index % categoryColors.length],
     };
     return acc;
@@ -188,7 +196,7 @@ export default function HomePage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium text-foreground">{transaction.category}</div>
+                  <div className="font-medium text-foreground">{getCategoryName(transaction.categoryId)}</div>
                   <div className="text-sm text-muted-foreground">{transaction.description}</div>
                   <div className="text-xs text-muted-foreground/70">
                     {format(typeof transaction.date === 'string' ? parseISO(transaction.date) : new Date(transaction.date), 'MMM d, yyyy')}

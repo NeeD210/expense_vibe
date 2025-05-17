@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { Id } from "../../convex/_generated/dataModel";
 
 export default function AddIncomePage() {
-  const categoriesData = useQuery(api.expenses.getCategories);
+  const categoriesData = useQuery(api.expenses.getCategoriesWithIds);
   const paymentTypesData = useQuery(api.expenses.getPaymentTypes);
   
   const categories = categoriesData ?? [];
@@ -20,7 +20,7 @@ export default function AddIncomePage() {
   const { toast } = useToast();
   
   const [date, setDate] = useState(new Date());
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState<Id<"categories"> | "">("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [amountError, setAmountError] = useState(false);
@@ -41,7 +41,7 @@ export default function AddIncomePage() {
     }
     
     // Ensure we have valid values before submitting
-    const finalCategory = category || categories[0] || "";
+    const finalCategoryId = categoryId || (categories[0]?._id ?? "");
     const finalPaymentTypeId = paymentTypeId || (paymentTypes[0]?._id ?? "");
     
     if (!finalPaymentTypeId) {
@@ -53,7 +53,7 @@ export default function AddIncomePage() {
       return;
     }
 
-    if (!finalCategory) {
+    if (!finalCategoryId) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -66,7 +66,7 @@ export default function AddIncomePage() {
       await addExpense({
         date: date.getTime(),
         paymentTypeId: finalPaymentTypeId,
-        category: finalCategory,
+        categoryId: finalCategoryId,
         description,
         amount: parseFloat(amount),
         cuotas: 1,
@@ -122,14 +122,14 @@ export default function AddIncomePage() {
           
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
-            <Select value={category} onValueChange={setCategory}>
+            <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<"categories"> | "")}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map(c => (
-                  <SelectItem key={c} value={c}>
-                    {c}
+                  <SelectItem key={c._id} value={c._id}>
+                    {c.name}
                   </SelectItem>
                 ))}
               </SelectContent>
