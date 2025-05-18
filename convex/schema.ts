@@ -43,6 +43,7 @@ export default defineSchema({
     userId: v.id("users"),
     color: v.optional(v.string()),
     icon: v.optional(v.string()),
+    transactionType: v.optional(v.string()),
     softdelete: v.optional(v.boolean()),
   }).index("by_user", ["userId"]),
 });

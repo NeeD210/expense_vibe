@@ -19,7 +19,7 @@ export default function AddExpensePage() {
   const paymentTypesData = useQuery(api.expenses.getPaymentTypes);
   const lastTransactionData = useQuery(api.expenses.getLastTransaction);
   
-  const categories = categoriesData ?? [];
+  const categories = categoriesData?.filter(c => c.transactionType === "expense") ?? [];
   const paymentTypes = paymentTypesData ?? [];
   const lastTransaction = lastTransactionData;
   const addExpense = useMutation(api.expenses.addExpense);

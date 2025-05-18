@@ -9,16 +9,17 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Id } from "../../convex/_generated/dataModel";
 
-type ConfigView = "navigation" | "categories" | "paymentTypes";
+type ConfigView = "navigation" | "categories" | "incomeCategories" | "paymentTypes";
 
 export default function ConfigPage() {
   const [currentView, setCurrentView] = useState<ConfigView>("navigation");
-  const categories = useQuery(api.expenses.getCategories) ?? [];
+  const categories = useQuery(api.expenses.getCategoriesWithIds) ?? [];
   const paymentTypes = useQuery(api.expenses.getPaymentTypes) ?? [];
   const updateCategories = useMutation(api.expenses.updateCategories);
   const addPaymentType = useMutation(api.expenses.addPaymentType);
   const removePaymentType = useMutation(api.expenses.removePaymentType);
-  const [newCategory, setNewCategory] = useState("");
+  const [newExpenseCategory, setNewExpenseCategory] = useState("");
+  const [newIncomeCategory, setNewIncomeCategory] = useState("");
   const [newPaymentType, setNewPaymentType] = useState("");
   const { toast } = useToast();
 
@@ -27,11 +28,20 @@ export default function ConfigPage() {
     setCurrentView("navigation");
   }, []);
 
-  const handleAddCategory = async () => {
-    if (!newCategory.trim()) return;
+  const handleAddCategory = async (name: string, type: "income" | "expense") => {
+    if (!name.trim()) return;
     try {
-      await updateCategories({ categories: [...categories, newCategory.trim()] });
-      setNewCategory("");
+      const newCategory = { name: name.trim(), transactionType: type };
+      const updatedCategories = [
+        ...categories.map(c => ({ name: c.name, transactionType: c.transactionType ?? "expense" })),
+        newCategory
+      ];
+      await updateCategories({ categories: updatedCategories });
+      if (type === "income") {
+        setNewIncomeCategory("");
+      } else {
+        setNewExpenseCategory("");
+      }
       toast({ title: "Category added" });
     } catch (error) {
       console.error("Failed to add category:", error);
@@ -43,9 +53,15 @@ export default function ConfigPage() {
     }
   };
   
-  const handleRemoveCategory = async (category: string) => {
+  const handleRemoveCategory = async (category: { _id: Id<"categories">, name: string, transactionType?: string }) => {
     try {
-      await updateCategories({ categories: categories.filter(c => c !== category) });
+      const updatedCategories = categories
+        .filter(c => c._id !== category._id)
+        .map(c => ({ 
+          name: c.name, 
+          transactionType: c.transactionType ?? "expense" 
+        }));
+      await updateCategories({ categories: updatedCategories });
       toast({ title: "Category removed" });
     } catch (error) {
       console.error("Failed to remove category:", error);
@@ -96,8 +112,19 @@ export default function ConfigPage() {
             >
               <div className="p-4">
                 <div className="w-full flex flex-col items-start text-left gap-1">
-                  <span className="font-medium">Modify Categories</span>
+                  <span className="font-medium">Expense Categories</span>
                   <span className="text-sm text-muted-foreground">Add, remove, or edit expense categories</span>
+                </div>
+              </div>
+            </Card>
+            <Card
+              onClick={() => setCurrentView("incomeCategories")}
+              className="cursor-pointer transition-shadow hover:shadow-lg"
+            >
+              <div className="p-4">
+                <div className="w-full flex flex-col items-start text-left gap-1">
+                  <span className="font-medium">Income Categories</span>
+                  <span className="text-sm text-muted-foreground">Add, remove, or edit income categories</span>
                 </div>
               </div>
             </Card>
@@ -133,40 +160,79 @@ export default function ConfigPage() {
           <ArrowLeft size={20} />
         </Button>
         <h2 className="text-2xl font-semibold">
-          {currentView === "categories" ? "Categories" : "Payment Types"}
+          {currentView === "categories" ? "Expense Categories" : 
+           currentView === "incomeCategories" ? "Income Categories" : 
+           "Payment Types"}
         </h2>
       </div>
       {currentView === "categories" ? (
-        <>
+        <div className="space-y-4">
           <div className="flex gap-2">
             <Input
               type="text"
-              value={newCategory}
-              onChange={e => setNewCategory(e.target.value)}
-              placeholder="New category"
+              value={newExpenseCategory}
+              onChange={e => setNewExpenseCategory(e.target.value)}
+              placeholder="New expense category"
               className="flex-1"
             />
-            <Button onClick={handleAddCategory}>
+            <Button onClick={() => handleAddCategory(newExpenseCategory, "expense")}>
               Add
             </Button>
           </div>
           <div className="flex flex-col gap-2">
-            {[...categories].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).map(category => (
-              <Card key={category}>
-                <CardContent className="flex items-center justify-between p-4">
-                  <span>{category}</span>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleRemoveCategory(category)}
-                  >
-                    Remove
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {categories
+              .filter(c => c.transactionType === "expense")
+              .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+              .map(category => (
+                <Card key={category._id}>
+                  <CardContent className="flex items-center justify-between p-4">
+                    <span>{category.name}</span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRemoveCategory(category)}
+                    >
+                      Remove
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
           </div>
-        </>
+        </div>
+      ) : currentView === "incomeCategories" ? (
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={newIncomeCategory}
+              onChange={e => setNewIncomeCategory(e.target.value)}
+              placeholder="New income category"
+              className="flex-1"
+            />
+            <Button onClick={() => handleAddCategory(newIncomeCategory, "income")}>
+              Add
+            </Button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {categories
+              .filter(c => c.transactionType === "income")
+              .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+              .map(category => (
+                <Card key={category._id}>
+                  <CardContent className="flex items-center justify-between p-4">
+                    <span>{category.name}</span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRemoveCategory(category)}
+                    >
+                      Remove
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </div>
       ) : (
         <>
           <div className="flex gap-2">

@@ -238,7 +238,10 @@ export const removePaymentType = mutation({
 
 export const updateCategories = mutation({
   args: {
-    categories: v.array(v.string()),
+    categories: v.array(v.object({
+      name: v.string(),
+      transactionType: v.string(),
+    })),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUserId(ctx);
@@ -252,18 +255,22 @@ export const updateCategories = mutation({
     
     // Soft delete categories that are no longer in the list
     for (const category of existingCategories) {
-      if (!args.categories.includes(category.name)) {
+      if (!args.categories.some(c => c.name === category.name && c.transactionType === category.transactionType)) {
         await ctx.db.patch(category._id, { softdelete: true });
       }
     }
     
     // Create new categories
-    for (const categoryName of args.categories) {
-      const exists = existingCategories.some(c => c.name === categoryName);
+    for (const category of args.categories) {
+      const exists = existingCategories.some(c => 
+        c.name === category.name && 
+        c.transactionType === category.transactionType
+      );
       if (!exists) {
         await ctx.db.insert("categories", {
-          name: categoryName,
+          name: category.name,
           userId,
+          transactionType: category.transactionType,
           softdelete: false,
         });
       }

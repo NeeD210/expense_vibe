@@ -18,7 +18,7 @@ export default function AddIncomePage() {
   const categoriesData = useQuery(api.expenses.getCategoriesWithIds);
   const paymentTypesData = useQuery(api.expenses.getPaymentTypes);
   
-  const categories = categoriesData ?? [];
+  const categories = categoriesData?.filter(c => c.transactionType === "income") ?? [];
   const paymentTypes = paymentTypesData ?? [];
   const addExpense = useMutation(api.expenses.addExpense);
   const { toast } = useToast();

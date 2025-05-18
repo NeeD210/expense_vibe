@@ -8,7 +8,7 @@ const defaultPaymentTypes = [
   "Tarjeta 2"
 ];
 
-const defaultCategories = [
+const defaultExpenseCategories = [
   "Vivienda",
   "Servicios",
   "Transporte",
@@ -21,6 +21,15 @@ const defaultCategories = [
   "Mascotas",
   "Educación",
   "Otras"
+];
+
+const defaultIncomeCategories = [
+  "Salario",
+  "Freelance",
+  "Inversiones",
+  "Regalo",
+  "Reembolso",
+  "Otros Ingresos"
 ];
 
 export const createUser = mutation({
@@ -76,11 +85,22 @@ export const createUser = mutation({
       });
     }
 
-    // Create default categories for the new user
-    for (const categoryName of defaultCategories) {
+    // Create default expense categories for the new user
+    for (const categoryName of defaultExpenseCategories) {
       await ctx.db.insert("categories", {
         name: categoryName,
         userId,
+        transactionType: "expense",
+        softdelete: false,
+      });
+    }
+
+    // Create default income categories for the new user
+    for (const categoryName of defaultIncomeCategories) {
+      await ctx.db.insert("categories", {
+        name: categoryName,
+        userId,
+        transactionType: "income",
         softdelete: false,
       });
     }

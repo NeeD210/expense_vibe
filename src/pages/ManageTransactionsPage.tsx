@@ -273,7 +273,9 @@ export default function ManageTransactionsPage() {
                               <SelectValue placeholder="Select a category" />
                             </SelectTrigger>
                             <SelectContent>
-                              {categories.map(c => (
+                              {categories
+                                .filter(c => c.transactionType === transaction.transactionType)
+                                .map(c => (
                                 <SelectItem key={c._id} value={c._id}>
                                   {c.name}
                                 </SelectItem>
@@ -381,8 +383,11 @@ export default function ManageTransactionsPage() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="font-medium text-foreground">
-                              ${Math.round(transaction.amount)}
+                            <div className={cn(
+                              "font-medium",
+                              transaction.transactionType === 'income' ? 'text-green-600' : 'text-foreground'
+                            )}>
+                              {transaction.transactionType === 'income' ? '+' : ''}${Math.round(transaction.amount)}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {getPaymentTypeName(transaction.paymentTypeId)}
