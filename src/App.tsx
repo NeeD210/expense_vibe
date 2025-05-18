@@ -25,6 +25,8 @@ export default function App() {
   const addMenuRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const initializeDefaultsDone = useRef(false);
+  const [configKey, setConfigKey] = useState(0);
+  const [manageKey, setManageKey] = useState(0);
 
   const { isLoading: auth0Loading, isAuthenticated, user } = useAuth0();
   const createUser = useMutation(api.auth.createUser);
@@ -32,10 +34,10 @@ export default function App() {
   const pageComponents = {
     home: HomePage,
     analysis: AnalysisPage,
-    config: ConfigPage,
+    config: () => <ConfigPage key={configKey} />,
     add: AddExpensePage,
     income: AddIncomePage,
-    manage: ManageTransactionsPage,
+    manage: () => <ManageTransactionsPage key={manageKey} />,
   };
 
   const CurrentPageComponent = pageComponents[currentPage];
@@ -190,7 +192,10 @@ export default function App() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCurrentPage('manage')}
+              onClick={() => {
+                setCurrentPage('manage');
+                setManageKey(prev => prev + 1);
+              }}
               className={cn(
                 "rounded-full transition-colors",
                 currentPage === 'manage' ? 'text-primary' : 'text-muted-foreground'
@@ -201,7 +206,10 @@ export default function App() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCurrentPage('config')}
+              onClick={() => {
+                setCurrentPage('config');
+                setConfigKey(prev => prev + 1);
+              }}
               className={cn(
                 "rounded-full transition-colors",
                 currentPage === 'config' ? 'text-primary' : 'text-muted-foreground'

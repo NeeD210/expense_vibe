@@ -30,12 +30,13 @@ export default defineSchema({
     softdelete: v.optional(v.boolean()),
   }).index("by_user", ["userId"]),
   users: defineTable({
-    email: v.string(),
-    isAnonymous: v.optional(v.boolean()),
-    emailVerified: v.boolean(),
-    lastLoginAt: v.optional(v.float64()),
-    softdelete: v.optional(v.boolean()),
     auth0Id: v.string(),
+    email: v.string(),
+    emailVerified: v.boolean(),
+    isAnonymous: v.optional(v.boolean()),
+    lastLoginAt: v.optional(v.float64()),
+    onboardingCompleted: v.optional(v.boolean()),
+    softdelete: v.optional(v.boolean()),
   }).index("by_auth0Id", ["auth0Id"]),
   categories: defineTable({
     name: v.string(),

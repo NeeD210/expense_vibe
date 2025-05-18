@@ -9,6 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Id } from "../../convex/_generated/dataModel";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 
 export default function AddIncomePage() {
   const categoriesData = useQuery(api.expenses.getCategoriesWithIds);
@@ -19,7 +23,8 @@ export default function AddIncomePage() {
   const addExpense = useMutation(api.expenses.addExpense);
   const { toast } = useToast();
   
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState<Date>(new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [categoryId, setCategoryId] = useState<Id<"categories"> | "">("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -133,17 +138,34 @@ export default function AddIncomePage() {
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Input
-              id="date"
-              type="date"
-              value={date.toISOString().split('T')[0]}
-              onChange={e => {
-                const newDate = new Date(e.target.value);
-                newDate.setUTCHours(12, 0, 0, 0);
-                setDate(newDate);
-              }}
-            />
+            <Label>Date</Label>
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(date) => {
+                    if (date) {
+                      setDate(date);
+                      setIsCalendarOpen(false);
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           
           <div className="space-y-2">
@@ -153,7 +175,9 @@ export default function AddIncomePage() {
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map(c => (
+                {categories
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map(c => (
                   <SelectItem key={c._id} value={c._id}>
                     {c.name}
                   </SelectItem>
@@ -172,7 +196,9 @@ export default function AddIncomePage() {
                 <SelectValue placeholder="Select a payment type" />
               </SelectTrigger>
               <SelectContent>
-                {paymentTypes.map(pt => (
+                {paymentTypes
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map(pt => (
                   <SelectItem key={pt._id} value={pt._id}>
                     {pt.name}
                   </SelectItem>
@@ -202,6 +228,7 @@ export default function AddIncomePage() {
               value={amount}
               onChange={handleAmountChange}
               placeholder="$0.00"
+              inputMode="numeric"
               className={cn(
                 amountError && "border-destructive focus-visible:ring-destructive"
               )}

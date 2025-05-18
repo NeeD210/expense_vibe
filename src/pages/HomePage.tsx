@@ -207,7 +207,7 @@ export default function HomePage() {
                     "font-medium",
                     transaction.transactionType === 'income' ? 'text-green-600' : 'text-foreground'
                   )}>
-                    {transaction.transactionType === 'income' ? '+' : ''}${transaction.amount.toFixed(2)}
+                    {transaction.transactionType === 'income' ? '+' : ''}${Math.round(transaction.amount)}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {transaction.transactionType === 'expense' && getPaymentTypeName(transaction.paymentTypeId)}

@@ -214,7 +214,13 @@ export default function ManageTransactionsPage() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setCurrentView("recurring")}
+          onClick={() => {
+            if (editingTransaction) {
+              setEditingTransaction(null);
+            } else {
+              setCurrentView("recurring");
+            }
+          }}
           className="rounded-full"
         >
           <ArrowLeft size={20} />
@@ -223,186 +229,184 @@ export default function ManageTransactionsPage() {
           Transactions
         </h2>
       </div>
-      <Card>
-        <CardContent>
-          <div className="space-y-4">
-            {transactions.map(transaction => {
-              const progress = getDeleteZoneProgress(swipeStates[transaction._id] || 0);
-              const scale = 1 + (progress * 0.2); // Scale up to 1.2x
-              const bgColor = `rgb(${220 + (progress * 35)}, ${38 + (progress * 17)}, ${38 + (progress * 17)})`; // Darker red
+      <div className="w-full h-full">
+        <div className="space-y-4">
+          {transactions.map(transaction => {
+            const progress = getDeleteZoneProgress(swipeStates[transaction._id] || 0);
+            const scale = 1 + (progress * 0.2); // Scale up to 1.2x
+            const bgColor = `rgb(${220 + (progress * 35)}, ${38 + (progress * 17)}, ${38 + (progress * 17)})`; // Darker red
 
-              return (
-                <div key={transaction._id} className="relative overflow-hidden">
-                  <animated.div
-                    {...bindSwipe(transaction._id)}
-                    style={{
-                      x: swipeStates[transaction._id] || 0,
-                      touchAction: 'pan-y pinch-zoom'
-                    }}
-                    className="flex items-center justify-between gap-4 p-4 border rounded-lg bg-background relative z-10"
-                  >
-                    {editingTransaction?.id === transaction._id ? (
-                      <div className="flex-1 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="date">Date</Label>
-                            <Input
-                              id="date"
-                              type="date"
-                              value={editingTransaction.date.toISOString().split('T')[0]}
-                              onChange={e => {
-                                const newDate = new Date(e.target.value);
-                                newDate.setUTCHours(12, 0, 0, 0);
-                                setEditingTransaction({ ...editingTransaction, date: newDate });
-                              }}
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <Label htmlFor="category">Category</Label>
-                            <Select 
-                              value={editingTransaction.categoryId} 
-                              onValueChange={value => setEditingTransaction({ ...editingTransaction, categoryId: value as Id<"categories"> })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a category" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {categories.map(c => (
-                                  <SelectItem key={c._id} value={c._id}>
-                                    {c.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+            return (
+              <div key={transaction._id} className="relative overflow-hidden">
+                <animated.div
+                  {...bindSwipe(transaction._id)}
+                  style={{
+                    x: swipeStates[transaction._id] || 0,
+                    touchAction: 'pan-y pinch-zoom'
+                  }}
+                  className="flex items-center justify-between gap-4 p-4 border rounded-lg bg-background relative z-10"
+                >
+                  {editingTransaction?.id === transaction._id ? (
+                    <div className="flex-1 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="date">Date</Label>
+                          <Input
+                            id="date"
+                            type="date"
+                            value={editingTransaction.date.toISOString().split('T')[0]}
+                            onChange={e => {
+                              const newDate = new Date(e.target.value);
+                              newDate.setUTCHours(12, 0, 0, 0);
+                              setEditingTransaction({ ...editingTransaction, date: newDate });
+                            }}
+                          />
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor="paymentType">Payment Type</Label>
+                          <Label htmlFor="category">Category</Label>
                           <Select 
-                            value={editingTransaction.paymentTypeId} 
-                            onValueChange={(value) => setEditingTransaction({ ...editingTransaction, paymentTypeId: value as Id<"paymentTypes"> | undefined })}
+                            value={editingTransaction.categoryId} 
+                            onValueChange={value => setEditingTransaction({ ...editingTransaction, categoryId: value as Id<"categories"> })}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a payment type" />
+                              <SelectValue placeholder="Select a category" />
                             </SelectTrigger>
                             <SelectContent>
-                              {paymentTypes.map(pt => (
-                                <SelectItem key={pt._id} value={pt._id}>
-                                  {pt.name}
+                              {categories.map(c => (
+                                <SelectItem key={c._id} value={c._id}>
+                                  {c.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="description">Description</Label>
-                          <Input
-                            id="description"
-                            type="text"
-                            value={editingTransaction.description}
-                            onChange={e => setEditingTransaction({ ...editingTransaction, description: e.target.value })}
-                            placeholder="Enter description"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="amount" className={cn(amountError && "text-destructive")}>
-                            Amount
-                          </Label>
-                          <Input
-                            id="amount"
-                            type="number"
-                            step="0.01"
-                            value={editingTransaction.amount}
-                            onChange={handleAmountChange}
-                            placeholder="0.00"
-                            className={cn(
-                              amountError && "border-destructive focus-visible:ring-destructive"
-                            )}
-                          />
-                          {amountError && (
-                            <p className="text-sm text-destructive">
-                              {amountError}
-                            </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="paymentType">Payment Type</Label>
+                        <Select 
+                          value={editingTransaction.paymentTypeId} 
+                          onValueChange={(value) => setEditingTransaction({ ...editingTransaction, paymentTypeId: value as Id<"paymentTypes"> | undefined })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a payment type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {paymentTypes.map(pt => (
+                              <SelectItem key={pt._id} value={pt._id}>
+                                {pt.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="description">Description</Label>
+                        <Input
+                          id="description"
+                          type="text"
+                          value={editingTransaction.description}
+                          onChange={e => setEditingTransaction({ ...editingTransaction, description: e.target.value })}
+                          placeholder="Enter description"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="amount" className={cn(amountError && "text-destructive")}>
+                          Amount
+                        </Label>
+                        <Input
+                          id="amount"
+                          type="number"
+                          step="1"
+                          value={editingTransaction.amount}
+                          onChange={handleAmountChange}
+                          placeholder="0"
+                          className={cn(
+                            amountError && "border-destructive focus-visible:ring-destructive"
                           )}
+                        />
+                        {amountError && (
+                          <p className="text-sm text-destructive">
+                            {amountError}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="cuotas">Cuotas</Label>
+                        <Input
+                          id="cuotas"
+                          type="number"
+                          value={editingTransaction.cuotas}
+                          onChange={(e) =>
+                            setEditingTransaction({
+                              ...editingTransaction,
+                              cuotas: parseInt(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <Button 
+                          variant="destructive" 
+                          onClick={() => {
+                            handleDelete(editingTransaction.id);
+                            setEditingTransaction(null);
+                          }}
+                        >
+                          Delete
+                        </Button>
+                        <div className="flex gap-2">
+                          <Button variant="outline" onClick={() => setEditingTransaction(null)}>Cancel</Button>
+                          <Button onClick={handleSaveEdit}>Save</Button>
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="cuotas">Cuotas</Label>
-                          <Input
-                            id="cuotas"
-                            type="number"
-                            value={editingTransaction.cuotas}
-                            onChange={(e) =>
-                              setEditingTransaction({
-                                ...editingTransaction,
-                                cuotas: parseInt(e.target.value) || 0,
-                              })
-                            }
-                          />
-                        </div>
-                        
-                        <div className="flex justify-between items-center">
-                          <Button 
-                            variant="destructive" 
-                            onClick={() => {
-                              handleDelete(editingTransaction.id);
-                              setEditingTransaction(null);
-                            }}
-                          >
-                            Delete
-                          </Button>
-                          <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => setEditingTransaction(null)}>Cancel</Button>
-                            <Button onClick={handleSaveEdit}>Save</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div 
+                        className="flex-1 cursor-pointer hover:bg-accent/50 p-2 rounded-md transition-colors"
+                        onClick={() => handleEdit(transaction)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-foreground">{getCategoryName(transaction.categoryId)}</div>
+                            <div className="text-sm text-muted-foreground">{transaction.description}</div>
+                            <div className="text-xs text-muted-foreground/70">
+                              {new Date(transaction.date).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-medium text-foreground">
+                              ${Math.round(transaction.amount)}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {getPaymentTypeName(transaction.paymentTypeId)}
+                              {transaction.cuotas && transaction.cuotas > 1 && ` - ${transaction.cuotas} cuota${transaction.cuotas > 1 ? 's' : ''}`}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        <div 
-                          className="flex-1 cursor-pointer hover:bg-accent/50 p-2 rounded-md transition-colors"
-                          onClick={() => handleEdit(transaction)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium text-foreground">{getCategoryName(transaction.categoryId)}</div>
-                              <div className="text-sm text-muted-foreground">{transaction.description}</div>
-                              <div className="text-xs text-muted-foreground/70">
-                                {new Date(transaction.date).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-medium text-foreground">
-                                ${transaction.amount.toFixed(2)}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {getPaymentTypeName(transaction.paymentTypeId)}
-                                {transaction.cuotas && transaction.cuotas > 1 && ` - ${transaction.cuotas} cuota${transaction.cuotas > 1 ? 's' : ''}`}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
+                    </>
+                  )}
+                </animated.div>
+                <div 
+                  className="absolute inset-0 flex items-center justify-end pr-4 text-destructive-foreground rounded-lg transition-colors"
+                  style={{ backgroundColor: bgColor }}
+                >
+                  <animated.div style={{ transform: `scale(${scale})` }}>
+                    <Trash2 className="h-6 w-6" />
                   </animated.div>
-                  <div 
-                    className="absolute inset-0 flex items-center justify-end pr-4 text-destructive-foreground rounded-lg transition-colors"
-                    style={{ backgroundColor: bgColor }}
-                  >
-                    <animated.div style={{ transform: `scale(${scale})` }}>
-                      <Trash2 className="h-6 w-6" />
-                    </animated.div>
-                  </div>
                 </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 } 

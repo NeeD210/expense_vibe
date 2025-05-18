@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { SignOutButton } from "../SignOutButton";
@@ -21,6 +21,11 @@ export default function ConfigPage() {
   const [newCategory, setNewCategory] = useState("");
   const [newPaymentType, setNewPaymentType] = useState("");
   const { toast } = useToast();
+
+  // Reset currentView to "navigation" when component mounts
+  useEffect(() => {
+    setCurrentView("navigation");
+  }, []);
 
   const handleAddCategory = async () => {
     if (!newCategory.trim()) return;

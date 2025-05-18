@@ -9,6 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Id } from "../../convex/_generated/dataModel";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
 
 export default function AddExpensePage() {
   const categoriesData = useQuery(api.expenses.getCategoriesWithIds);
@@ -22,7 +26,8 @@ export default function AddExpensePage() {
   const hasInitialized = useRef(false);
   const { toast } = useToast();
   
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState<Date>(new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [paymentTypeId, setPaymentTypeId] = useState<Id<"paymentTypes"> | "">("");
   const [cuotas, setCuotas] = useState("1");
   const [categoryId, setCategoryId] = useState<Id<"categories"> | "">("");
@@ -168,13 +173,34 @@ export default function AddExpensePage() {
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Input
-              id="date"
-              type="date"
-              value={date.toISOString().split('T')[0]}
-              onChange={e => setDate(new Date(e.target.value))}
-            />
+            <Label>Date</Label>
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(date) => {
+                    if (date) {
+                      setDate(date);
+                      setIsCalendarOpen(false);
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           
           <div className="grid grid-cols-4 gap-4">
@@ -188,7 +214,9 @@ export default function AddExpensePage() {
                   <SelectValue placeholder="Select payment type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {paymentTypes.map(pt => (
+                  {paymentTypes
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map(pt => (
                     <SelectItem key={pt._id} value={pt._id}>
                       {pt.name}
                     </SelectItem>
@@ -216,7 +244,9 @@ export default function AddExpensePage() {
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map(c => (
+                {categories
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map(c => (
                   <SelectItem key={c._id} value={c._id}>
                     {c.name}
                   </SelectItem>
@@ -246,6 +276,7 @@ export default function AddExpensePage() {
               value={amount}
               onChange={handleAmountChange}
               placeholder="$0.00"
+              inputMode="numeric"
               className={cn(
                 amountError && "border-destructive focus-visible:ring-destructive"
               )}
