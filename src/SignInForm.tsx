@@ -1,89 +1,111 @@
 "use client";
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useState, Dispatch, SetStateAction } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
+import { useState, Dispatch, SetStateAction, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
+import { FcGoogle } from "react-icons/fc";
 
 interface SignInFormProps {
   setCurrentPage: Dispatch<SetStateAction<"home" | "analysis" | "config" | "add" | "income" | "manage">>;
 }
 
 export function SignInForm({ setCurrentPage }: SignInFormProps) {
-  const { signIn } = useAuthActions();
-  const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
+  const { loginWithRedirect, loginWithPopup, isAuthenticated, user, isLoading } = useAuth0();
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  const [userCreationAttempted, setUserCreationAttempted] = useState(false);
+  
   const createUser = useMutation(api.auth.createUser);
 
+  useEffect(() => {
+    const createUserIfNeeded = async () => {
+      console.log("Auth state check:", { isLoading, isAuthenticated, email: user?.email, sub: user?.sub, userCreationAttempted });
+
+      if (isLoading) {
+        console.log("Auth0 is loading, waiting...");
+        return;
+      }
+
+      if (isAuthenticated && user?.email && user?.sub && !userCreationAttempted) {
+        setUserCreationAttempted(true);
+        try {
+          console.log("Attempting to create user:", { email: user.email, auth0Id: user.sub });
+          await createUser({
+            email: user.email,
+            auth0Id: user.sub
+          });
+          console.log("User creation/check successful for:", user.email);
+        } catch (error: any) {
+          console.error("Error during createUser mutation:", error);
+        }
+      } else if (userCreationAttempted) {
+        console.log("User creation already attempted for this session/login.");
+      } else {
+        console.log("Skipping user creation: conditions not met (or Auth0 finished loading without user).");
+      }
+    };
+
+    createUserIfNeeded();
+  }, [isLoading, isAuthenticated, user?.email, user?.sub, createUser, userCreationAttempted]);
+
+  const handlePasswordAuth = async () => {
+    setSubmitting(true);
+    try {
+      await loginWithPopup({
+        authorizationParams: {
+          connection: "Username-Password-Authentication"
+        }
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "Failed to authenticate. Please try again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleAuth = async () => {
+    try {
+      setSubmitting(true);
+      await loginWithRedirect({
+        authorizationParams: {
+          connection: "google-oauth2"
+        }
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "Failed to sign in with Google",
+      });
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <div className="w-full">
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setSubmitting(true);
-          const formData = new FormData(e.target as HTMLFormElement);
-          formData.set("flow", flow);
-          try {
-            await signIn("password", formData);
-            if (flow === "signUp") {
-              const email = formData.get("email") as string;
-              await createUser({ email });
-            }
-            // Explicitly set the current page to home after successful authentication
-            setCurrentPage('home');
-          } catch (_error) {
-            const toastTitle =
-              flow === "signIn"
-                ? "Could not sign in, did you mean to sign up?"
-                : "Could not sign up, did you mean to sign in?";
-            toast({
-              variant: "destructive",
-              title: "Authentication Error",
-              description: toastTitle,
-            });
-            setSubmitting(false);
-          }
-        }}
+    <div className="w-full space-y-4">
+      <Button
+        variant="outline"
+        className="w-full flex items-center gap-2"
+        onClick={handleGoogleAuth}
+        disabled={submitting}
       >
-        <Input
-          type="email"
-          name="email"
-          placeholder="Email"
-          required
-        />
-        <Input
-          type="password"
-          name="password"
-          placeholder="Password"
-          required
-        />
-        <Button 
-          type="submit" 
-          disabled={submitting}
-          className="w-full"
-        >
-          {flow === "signIn" ? "Sign in" : "Sign up"}
-        </Button>
-        <div className="text-center text-sm text-muted-foreground">
-          <span>
-            {flow === "signIn"
-              ? "Don't have an account? "
-              : "Already have an account? "}
-          </span>
-          <Button
-            type="button"
-            variant="link"
-            className="p-0 h-auto"
-            onClick={() => setFlow(flow === "signIn" ? "signUp" : "signIn")}
-          >
-            {flow === "signIn" ? "Sign up instead" : "Sign in instead"}
-          </Button>
-        </div>
-      </form>
+        <FcGoogle className="h-5 w-5" />
+        Sign in with Google
+      </Button>
+
+      <Button 
+        onClick={handlePasswordAuth}
+        disabled={submitting}
+        className="w-full"
+      >
+        Sign in with Email
+      </Button>
     </div>
   );
 }

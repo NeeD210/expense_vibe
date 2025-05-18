@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { SignOutButton } from "../SignOutButton";
@@ -18,44 +18,9 @@ export default function ConfigPage() {
   const updateCategories = useMutation(api.expenses.updateCategories);
   const addPaymentType = useMutation(api.expenses.addPaymentType);
   const removePaymentType = useMutation(api.expenses.removePaymentType);
-  const initializeDefaultPaymentTypes = useMutation(api.expenses.initializeDefaultPaymentTypes);
-  const initializeDefaultCategories = useMutation(api.expenses.initializeDefaultCategories);
   const [newCategory, setNewCategory] = useState("");
   const [newPaymentType, setNewPaymentType] = useState("");
   const { toast } = useToast();
-
-  // Initialize default categories and payment types if none exist
-  useEffect(() => {
-    const initializeDefaults = async () => {
-      if (categories.length === 0) {
-        try {
-          await initializeDefaultCategories();
-          toast({ title: "Default categories initialized" });
-        } catch (error) {
-          console.error("Failed to initialize default categories:", error);
-          toast({ 
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to initialize default categories"
-          });
-        }
-      }
-      if (paymentTypes.length === 0) {
-        try {
-          await initializeDefaultPaymentTypes();
-          toast({ title: "Default payment types initialized" });
-        } catch (error) {
-          console.error("Failed to initialize default payment types:", error);
-          toast({ 
-            variant: "destructive",
-            title: "Error",
-            description: "Failed to initialize default payment types"
-          });
-        }
-      }
-    };
-    initializeDefaults();
-  }, [categories.length, paymentTypes.length, initializeDefaultCategories, initializeDefaultPaymentTypes, toast]);
 
   const handleAddCategory = async () => {
     if (!newCategory.trim()) return;
@@ -119,7 +84,6 @@ export default function ConfigPage() {
     return (
       <div className="flex flex-col h-[calc(100vh-11rem)]">
         <div className="flex-1">
-          <h2 className="text-2xl font-semibold mb-6">Settings</h2>
           <div className="grid gap-4">
             <Card
               onClick={() => setCurrentView("categories")}
@@ -182,7 +146,7 @@ export default function ConfigPage() {
             </Button>
           </div>
           <div className="flex flex-col gap-2">
-            {categories.map(category => (
+            {[...categories].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).map(category => (
               <Card key={category}>
                 <CardContent className="flex items-center justify-between p-4">
                   <span>{category}</span>
@@ -213,7 +177,7 @@ export default function ConfigPage() {
             </Button>
           </div>
           <div className="flex flex-col gap-2">
-            {paymentTypes.map(paymentType => (
+            {[...paymentTypes].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())).map(paymentType => (
               <Card key={paymentType._id}>
                 <CardContent className="flex items-center justify-between p-4">
                   <span>{paymentType.name}</span>

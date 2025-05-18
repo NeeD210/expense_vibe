@@ -15,6 +15,8 @@ import PerFiLogo from "./img/PerFi_logo.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useAuth0 } from "@auth0/auth0-react";
+import { useMutation } from "convex/react";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<keyof typeof pageComponents>('home');
@@ -22,7 +24,11 @@ export default function App() {
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const addMenuRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  
+  const initializeDefaultsDone = useRef(false);
+
+  const { isLoading: auth0Loading, isAuthenticated, user } = useAuth0();
+  const createUser = useMutation(api.auth.createUser);
+
   const pageComponents = {
     home: HomePage,
     analysis: AnalysisPage,
@@ -52,6 +58,34 @@ export default function App() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showAddMenu]);
+
+  useEffect(() => {
+    const createUserIfNeeded = async () => {
+      console.log("App.tsx Auth state check:", { auth0Loading, isAuthenticated, email: user?.email, sub: user?.sub });
+
+      if (auth0Loading) {
+        console.log("App.tsx: Auth0 is loading, waiting...");
+        return;
+      }
+
+      if (isAuthenticated && user?.email && user?.sub) {
+        try {
+          console.log("App.tsx: Attempting to create user:", { email: user.email, auth0Id: user.sub });
+          await createUser({
+            email: user.email,
+            auth0Id: user.sub
+          });
+          console.log("App.tsx: User creation/check successful for:", user.email);
+        } catch (error: any) {
+          console.warn("App.tsx: Error during createUser mutation (might be expected if user already exists):", error.message);
+        }
+      } else if (!auth0Loading) {
+        console.log("App.tsx: Skipping user creation: conditions not met or Auth0 finished loading without user.");
+      }
+    };
+
+    createUserIfNeeded();
+  }, [auth0Loading, isAuthenticated, user, createUser]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

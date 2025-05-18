@@ -25,7 +25,7 @@ const categoryColors = [
 export default function HomePage() {
   const allExpenses = useQuery(api.expenses.listExpenses) ?? [];
   const allTransactions = useQuery(api.expenses.listAllTransactions) ?? [];
-  const allCategories = useQuery(api.expenses.getCategoriesWithIds) ?? [];
+  const allCategories = useQuery(api.expenses.getCategoriesWithIdsIncludingDeleted) ?? [];
   const paymentTypes = useQuery(api.expenses.getPaymentTypes) ?? [];
   const [chartType, setChartType] = useState<'doughnut' | 'combined'>('doughnut');
 

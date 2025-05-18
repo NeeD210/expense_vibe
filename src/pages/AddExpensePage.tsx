@@ -30,6 +30,31 @@ export default function AddExpensePage() {
   const [amount, setAmount] = useState("");
   const [amountError, setAmountError] = useState(false);
 
+  // Format amount with $ and thousands separators
+  const formatAmount = (value: string) => {
+    // Remove any non-digit characters except decimal point
+    const numericValue = value.replace(/[^\d.]/g, '');
+    
+    // Handle empty input
+    if (!numericValue) return '';
+    
+    // Split into dollars and cents
+    const parts = numericValue.split('.');
+    const dollars = parts[0];
+    const cents = parts[1] || '';
+    
+    // Format dollars with commas
+    const formattedDollars = dollars.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    
+    // Combine with cents if present
+    return `$${formattedDollars}${cents ? `.${cents}` : ''}`;
+  };
+
+  // Parse formatted amount back to number
+  const parseAmount = (formattedValue: string) => {
+    return parseFloat(formattedValue.replace(/[$,]/g, ''));
+  };
+
   // Set initial values only once when the component mounts and all data is loaded
   useEffect(() => {
     if (hasInitialized.current) {
@@ -65,7 +90,8 @@ export default function AddExpensePage() {
     e.preventDefault();
     
     // Validate amount
-    if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+    const numericAmount = parseAmount(amount);
+    if (!amount || isNaN(numericAmount) || numericAmount <= 0) {
       setAmountError(true);
       toast({
         variant: "destructive",
@@ -103,7 +129,7 @@ export default function AddExpensePage() {
         paymentTypeId: finalPaymentTypeId,
         categoryId: finalCategoryId,
         description,
-        amount: parseFloat(amount),
+        amount: numericAmount,
         cuotas: parseInt(cuotas),
         transactionType: "expense",
       });
@@ -127,7 +153,7 @@ export default function AddExpensePage() {
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setAmount(value);
+    setAmount(formatAmount(value));
     // Clear error when user starts typing
     if (amountError) {
       setAmountError(false);
@@ -216,11 +242,10 @@ export default function AddExpensePage() {
             </Label>
             <Input
               id="amount"
-              type="number"
-              step="0.01"
+              type="text"
               value={amount}
               onChange={handleAmountChange}
-              placeholder="0.00"
+              placeholder="$0.00"
               className={cn(
                 amountError && "border-destructive focus-visible:ring-destructive"
               )}

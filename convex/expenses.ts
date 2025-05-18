@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
 
 const defaultCategories = [
@@ -24,6 +23,19 @@ const defaultPaymentTypes = [
   "Tarjeta 2"
 ];
 
+// Helper function to get the authenticated user's ID
+async function getAuthenticatedUserId(ctx: { auth: { getUserIdentity: () => Promise<any> }, db: any }): Promise<Id<"users"> | null> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+
+  const user = await ctx.db
+    .query("users")
+    .filter((q: any) => q.eq(q.field("auth0Id"), identity.subject))
+    .first();
+
+  return user?._id ?? null;
+}
+
 export const addExpense = mutation({
   args: {
     amount: v.number(),
@@ -35,7 +47,7 @@ export const addExpense = mutation({
     transactionType: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     
     // Get the category name from the category ID
@@ -59,7 +71,7 @@ export const addExpense = mutation({
 
 export const listAllTransactions = query({
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) return [];
     
     return await ctx.db
@@ -73,7 +85,7 @@ export const listAllTransactions = query({
 
 export const listExpenses = query({
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) return [];
     
     return await ctx.db
@@ -90,7 +102,7 @@ export const listExpenses = query({
 
 export const listIncome = query({
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) return [];
     
     return await ctx.db
@@ -107,7 +119,7 @@ export const listIncome = query({
 
 export const getCategories = query({
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) return defaultCategories;
     
     const categories = await ctx.db
@@ -127,13 +139,31 @@ export const getCategories = query({
 export const initializeDefaultCategories = mutation({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      console.warn(
+        `initializeDefaultCategories: Skipping due to no auth identity. This might be normal if called during initial user setup when auth.ts:createUser is primary.`,
+      );
+      return;
+    }
+
+    // Get the user record using the auth identity
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("auth0Id"), identity.subject))
+      .first();
+
+    if (!user) {
+      console.warn(
+        `initializeDefaultCategories: Skipping due to no user record found. This might be normal if called during initial user setup when auth.ts:createUser is primary.`,
+      );
+      return;
+    }
 
     // Check if user already has categories
     const existingCategories = await ctx.db
       .query("categories")
-      .withIndex("by_user", q => q.eq("userId", userId))
+      .withIndex("by_user", q => q.eq("userId", user._id))
       .filter(q => q.eq(q.field("softdelete"), false))
       .collect();
 
@@ -142,7 +172,7 @@ export const initializeDefaultCategories = mutation({
       for (const name of defaultCategories) {
         await ctx.db.insert("categories", {
           name,
-          userId,
+          userId: user._id,
           softdelete: false,
         });
       }
@@ -153,13 +183,20 @@ export const initializeDefaultCategories = mutation({
 export const getPaymentTypes = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    // Get the user record using the auth identity
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("auth0Id"), identity.subject))
+      .first();
+
+    if (!user) return [];
 
     const paymentTypes = await ctx.db
       .query("paymentTypes")
-      .withIndex("by_user", q => q.eq("userId", userId))
-      .filter(q => q.eq(q.field("softdelete"), false))
+      .withIndex("by_user_softdelete", q => q.eq("userId", user._id).eq("softdelete", false))
       .collect();
 
     return paymentTypes;
@@ -171,7 +208,7 @@ export const addPaymentType = mutation({
     name: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
     return await ctx.db.insert("paymentTypes", {
@@ -187,7 +224,7 @@ export const removePaymentType = mutation({
     id: v.id("paymentTypes"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
     const paymentType = await ctx.db.get(args.id);
@@ -204,7 +241,7 @@ export const updateCategories = mutation({
     categories: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     
     // Get existing categories
@@ -239,7 +276,7 @@ export const updatePaymentTypes = mutation({
     paymentTypes: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
     const existing = await ctx.db
@@ -263,7 +300,7 @@ export const deleteExpense = mutation({
     id: v.id("expenses"),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     
     const expense = await ctx.db.get(args.id);
@@ -288,7 +325,7 @@ export const updateExpense = mutation({
     cuotas: v.number(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
     
     const expense = await ctx.db.get(args.id);
@@ -329,7 +366,7 @@ export const setDefaultCuotas = mutation({
 
 export const getLastTransaction = query({
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) return null;
     
     const lastExpense = await ctx.db
@@ -388,14 +425,31 @@ export const deleteExpenseById = mutation({
 export const initializeDefaultPaymentTypes = mutation({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      console.warn(
+        `initializeDefaultPaymentTypes: Skipping due to no auth identity. This might be normal if called during initial user setup when auth.ts:createUser is primary.`,
+      );
+      return;
+    }
+
+    // Get the user record using the auth identity
+    const user = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("auth0Id"), identity.subject))
+      .first();
+
+    if (!user) {
+      console.warn(
+        `initializeDefaultPaymentTypes: Skipping due to no user record found. This might be normal if called during initial user setup when auth.ts:createUser is primary.`,
+      );
+      return;
+    }
 
     // Check if user already has payment types
     const existingTypes = await ctx.db
       .query("paymentTypes")
-      .withIndex("by_user", q => q.eq("userId", userId))
-      .filter(q => q.eq(q.field("softdelete"), false))
+      .withIndex("by_user_softdelete", q => q.eq("userId", user._id).eq("softdelete", false))
       .collect();
 
     if (existingTypes.length === 0) {
@@ -403,7 +457,7 @@ export const initializeDefaultPaymentTypes = mutation({
       for (const name of defaultPaymentTypes) {
         await ctx.db.insert("paymentTypes", {
           name,
-          userId,
+          userId: user._id,
           softdelete: false,
         });
       }
@@ -413,13 +467,27 @@ export const initializeDefaultPaymentTypes = mutation({
 
 export const getCategoriesWithIds = query({
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
+    const userId = await getAuthenticatedUserId(ctx);
     if (!userId) return [];
     
     const categories = await ctx.db
       .query("categories")
       .withIndex("by_user", q => q.eq("userId", userId))
       .filter(q => q.eq(q.field("softdelete"), false))
+      .collect();
+    
+    return categories;
+  },
+});
+
+export const getCategoriesWithIdsIncludingDeleted = query({
+  handler: async (ctx) => {
+    const userId = await getAuthenticatedUserId(ctx);
+    if (!userId) return [];
+    
+    const categories = await ctx.db
+      .query("categories")
+      .withIndex("by_user", q => q.eq("userId", userId))
       .collect();
     
     return categories;

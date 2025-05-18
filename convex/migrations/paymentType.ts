@@ -13,7 +13,9 @@ async function findOrCreatePaymentType(
   // First try to find existing payment type
   const existingPaymentType = await ctx.db
     .query("paymentTypes")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .withIndex("by_user_softdelete", (q) => 
+      q.eq("userId", userId).eq("softdelete", false)
+    )
     .filter((q) => q.eq(q.field("name"), name))
     .first();
 

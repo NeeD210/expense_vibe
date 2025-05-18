@@ -1,35 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
-  authAccounts: defineTable({
-    provider: v.string(),
-    providerAccountId: v.string(),
-    secret: v.string(),
-    userId: v.id("users"),
-    softdelete: v.optional(v.boolean()),
-  }).index("providerAndAccountId", ["provider", "providerAccountId"]),
-  authRateLimits: defineTable({
-    attemptsLeft: v.float64(),
-    identifier: v.id("authAccounts"),
-    lastAttemptTime: v.float64(),
-    softdelete: v.optional(v.boolean()),
-  }),
-  authRefreshTokens: defineTable({
-    expirationTime: v.float64(),
-    firstUsedTime: v.optional(v.float64()),
-    parentRefreshTokenId: v.optional(
-      v.id("authRefreshTokens")
-    ),
-    sessionId: v.id("authSessions"),
-    softdelete: v.optional(v.boolean()),
-  }),
-  authSessions: defineTable({
-    expirationTime: v.float64(),
-    userId: v.id("users"),
-    softdelete: v.optional(v.boolean()),
-  }),
   expenses: defineTable({
     amount: v.float64(),
     category: v.string(),
@@ -49,7 +21,7 @@ export default defineSchema({
     userId: v.id("users"),
     deletedAt: v.optional(v.number()),
     softdelete: v.optional(v.boolean()),
-  }).index("by_user", ["userId"]),
+  }).index("by_user_softdelete", ["userId", "softdelete"]),
   userPreferences: defineTable({
     categories: v.optional(v.array(v.string())),
     paymentTypes: v.array(v.string()),
@@ -58,10 +30,13 @@ export default defineSchema({
     softdelete: v.optional(v.boolean()),
   }).index("by_user", ["userId"]),
   users: defineTable({
-    email: v.optional(v.string()),
+    email: v.string(),
     isAnonymous: v.optional(v.boolean()),
+    emailVerified: v.boolean(),
+    lastLoginAt: v.optional(v.float64()),
     softdelete: v.optional(v.boolean()),
-  }),
+    auth0Id: v.string(),
+  }).index("by_auth0Id", ["auth0Id"]),
   categories: defineTable({
     name: v.string(),
     userId: v.id("users"),

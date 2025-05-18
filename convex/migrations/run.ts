@@ -18,11 +18,7 @@ export const runAllMigrations = internalMutation({
   }),
   handler: async (ctx: MutationCtx): Promise<MigrationResults> => {
     console.log("Starting payment type migration...");
-    
-    // First migrate payment types from userPreferences
-    await ctx.runMutation(internal.migrations.migratePaymentTypesFromUserPreferences);
-    
-    // Then run the payment type migration for expenses
+
     const results: MigrationResults = await ctx.runMutation(
       internal.migrations.paymentType.runPaymentTypeMigration,
       {}
