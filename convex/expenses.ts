@@ -43,7 +43,7 @@ export const addExpense = mutation({
     cuotas: v.number(),
     date: v.number(),
     description: v.string(),
-    paymentTypeId: v.id("paymentTypes"),
+    paymentTypeId: v.optional(v.id("paymentTypes")),
     transactionType: v.string(),
   },
   handler: async (ctx, args) => {

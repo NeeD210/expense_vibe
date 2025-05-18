@@ -153,4 +153,87 @@ export const runCategoryMigration = internalMutation({
 
     return results;
   },
+});
+
+// Migration function to update all categories to have "expense" as transaction type
+export const updateCategoriesToExpense = internalMutation({
+  args: {
+    batchSize: v.optional(v.number()),
+  },
+  returns: v.object({
+    processed: v.number(),
+    updated: v.number(),
+    errors: v.number(),
+    hasMore: v.boolean(),
+  }),
+  handler: async (ctx, args): Promise<MigrationBatchResult> => {
+    const batchSize = args.batchSize ?? 100;
+    let processed = 0;
+    let updated = 0;
+    let errors = 0;
+
+    // Get all categories that need migration (no transactionType or different from "expense")
+    const categories = await ctx.db
+      .query("categories")
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("transactionType"), undefined),
+          q.neq(q.field("transactionType"), "expense")
+        )
+      )
+      .take(batchSize);
+
+    for (const category of categories) {
+      try {
+        // Update category to have "expense" as transaction type
+        await ctx.db.patch(category._id, {
+          transactionType: "expense",
+        });
+
+        updated++;
+      } catch (error) {
+        console.error(`Error updating category ${category._id}:`, error);
+        errors++;
+      }
+      processed++;
+    }
+
+    return {
+      processed,
+      updated,
+      errors,
+      hasMore: categories.length === batchSize,
+    };
+  },
+});
+
+// Function to run the category type migration in batches
+export const runCategoryTypeMigration = internalMutation({
+  args: {},
+  returns: v.object({
+    totalProcessed: v.number(),
+    totalUpdated: v.number(),
+    totalErrors: v.number(),
+  }),
+  handler: async (ctx): Promise<MigrationResults> => {
+    const results: MigrationResults = {
+      totalProcessed: 0,
+      totalUpdated: 0,
+      totalErrors: 0,
+    };
+
+    let hasMore = true;
+    while (hasMore) {
+      const batchResult = await ctx.runMutation(internal.migrations.category.updateCategoriesToExpense, {
+        batchSize: 100,
+      });
+
+      results.totalProcessed += batchResult.processed;
+      results.totalUpdated += batchResult.updated;
+      results.totalErrors += batchResult.errors;
+      hasMore = batchResult.hasMore;
+    }
+
+    return results;
+  },
 }); 

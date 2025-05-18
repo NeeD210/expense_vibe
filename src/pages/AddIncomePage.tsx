@@ -16,10 +16,7 @@ import { CalendarIcon } from "lucide-react";
 
 export default function AddIncomePage() {
   const categoriesData = useQuery(api.expenses.getCategoriesWithIds);
-  const paymentTypesData = useQuery(api.expenses.getPaymentTypes);
-  
   const categories = categoriesData?.filter(c => c.transactionType === "income") ?? [];
-  const paymentTypes = paymentTypesData ?? [];
   const addExpense = useMutation(api.expenses.addExpense);
   const { toast } = useToast();
   
@@ -29,7 +26,6 @@ export default function AddIncomePage() {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [amountError, setAmountError] = useState(false);
-  const [paymentTypeId, setPaymentTypeId] = useState<Id<"paymentTypes"> | "">("");
   
   // Format amount with $ and thousands separators
   const formatAmount = (value: string) => {
@@ -73,17 +69,7 @@ export default function AddIncomePage() {
     
     // Ensure we have valid values before submitting
     const finalCategoryId = categoryId || (categories[0]?._id ?? "");
-    const finalPaymentTypeId = paymentTypeId || (paymentTypes[0]?._id ?? "");
     
-    if (!finalPaymentTypeId) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No payment types available",
-      });
-      return;
-    }
-
     if (!finalCategoryId) {
       toast({
         variant: "destructive",
@@ -96,7 +82,6 @@ export default function AddIncomePage() {
     try {
       await addExpense({
         date: date.getTime(),
-        paymentTypeId: finalPaymentTypeId,
         categoryId: finalCategoryId,
         description,
         amount: numericAmount,
@@ -180,27 +165,6 @@ export default function AddIncomePage() {
                   .map(c => (
                   <SelectItem key={c._id} value={c._id}>
                     {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="paymentType">Payment Type</Label>
-            <Select 
-              value={paymentTypeId} 
-              onValueChange={(value) => setPaymentTypeId(value as Id<"paymentTypes"> | "")}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a payment type" />
-              </SelectTrigger>
-              <SelectContent>
-                {paymentTypes
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map(pt => (
-                  <SelectItem key={pt._id} value={pt._id}>
-                    {pt.name}
                   </SelectItem>
                 ))}
               </SelectContent>

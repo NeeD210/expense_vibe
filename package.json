@@ -35,13 +35,10 @@
     "react-chartjs-2": "^5.2.0",
     "react-day-picker": "^8.10.0",
     "react-dom": "^18.2.0",
-    "react-icons": "^5.0.1",
     "react-router-dom": "^6.22.1",
     "recharts": "^2.12.0",
     "resend": "^3.1.0",
-    "sonner": "^1.4.0",
-    "tailwind-merge": "^2.2.1",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwind-merge": "^2.2.1"
   },
   "overrides": {
     "convex": "1.21.1-alpha.1"
