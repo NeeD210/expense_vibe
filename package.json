@@ -22,7 +22,7 @@
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-tooltip": "^1.0.7",
     "@react-spring/web": "^9.7.3",
-    "@use-gesture/react": "^9.1.3",
+    "@use-gesture/react": "^7.0.0",
     "apexcharts": "^3.45.2",
     "chart.js": "^4.4.1",
     "chartjs-plugin-datalabels": "^2.2.0",
