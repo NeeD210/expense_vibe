@@ -286,18 +286,32 @@ export const updatePaymentTypes = mutation({
     const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    const existing = await ctx.db
-      .query("userPreferences")
-      .withIndex("by_user", q => q.eq("userId", userId))
-      .unique();
+    // Get existing payment types
+    const existingTypes = await ctx.db
+      .query("paymentTypes")
+      .withIndex("by_user_softdelete", q => q.eq("userId", userId).eq("softdelete", false))
+      .collect();
 
-    if (existing) {
-      await ctx.db.patch(existing._id, { paymentTypes: args.paymentTypes });
-    } else {
-      await ctx.db.insert("userPreferences", {
-        userId,
-        paymentTypes: args.paymentTypes,
-      });
+    // Soft delete types that are no longer in the list
+    for (const type of existingTypes) {
+      if (!args.paymentTypes.includes(type.name)) {
+        await ctx.db.patch(type._id, { 
+          softdelete: true,
+          deletedAt: Date.now()
+        });
+      }
+    }
+
+    // Create new payment types
+    for (const typeName of args.paymentTypes) {
+      const exists = existingTypes.some(t => t.name === typeName);
+      if (!exists) {
+        await ctx.db.insert("paymentTypes", {
+          name: typeName,
+          userId,
+          softdelete: false,
+        });
+      }
     }
   },
 });
@@ -355,22 +369,6 @@ export const updateExpense = mutation({
   },
 });
 
-export const setDefaultCuotas = mutation({
-  args: {},
-  returns: v.number(),
-  handler: async (ctx) => {
-    const expenses = await ctx.db.query("expenses").collect();
-    let updatedCount = 0;
-
-    for (const expense of expenses) {
-      await ctx.db.patch(expense._id, { cuotas: 1 });
-      updatedCount++;
-    }
-
-    return updatedCount;
-  },
-});
-
 export const getLastTransaction = query({
   handler: async (ctx) => {
     const userId = await getAuthenticatedUserId(ctx);
@@ -384,48 +382,6 @@ export const getLastTransaction = query({
       .first();
     
     return lastExpense;
-  },
-});
-
-export const setDefaultTransactionType = mutation({
-  args: {},
-  returns: v.number(),
-  handler: async (ctx) => {
-    const expenses = await ctx.db.query("expenses").collect();
-    let updatedCount = 0;
-
-    for (const expense of expenses) {
-      await ctx.db.patch(expense._id, { transactionType: "expense" });
-      updatedCount++;
-    }
-
-    return updatedCount;
-  },
-});
-
-export const forceSetTransactionType = mutation({
-  args: {},
-  returns: v.number(),
-  handler: async (ctx) => {
-    const expenses = await ctx.db.query("expenses").collect();
-    let patched = 0;
-    for (const expense of expenses) {
-      await ctx.db.patch(expense._id, { transactionType: "expense" });
-      patched++;
-    }
-    return patched;
-  },
-});
-
-export const deleteExpenseById = mutation({
-  args: { id: v.id("expenses") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, { 
-      softdelete: true,
-      deletedAt: Date.now()
-    });
-    return null;
   },
 });
 

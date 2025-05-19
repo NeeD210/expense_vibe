@@ -22,13 +22,6 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
     softdelete: v.optional(v.boolean()),
   }).index("by_user_softdelete", ["userId", "softdelete"]),
-  userPreferences: defineTable({
-    categories: v.optional(v.array(v.string())),
-    paymentTypes: v.array(v.string()),
-    userId: v.id("users"),
-    deletedAt: v.optional(v.number()),
-    softdelete: v.optional(v.boolean()),
-  }).index("by_user", ["userId"]),
   users: defineTable({
     auth0Id: v.string(),
     email: v.string(),

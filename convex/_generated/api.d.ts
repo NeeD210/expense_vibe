@@ -21,7 +21,6 @@ import type * as migrations_expenseCategory from "../migrations/expenseCategory.
 import type * as migrations_index from "../migrations/index.js";
 import type * as migrations_paymentType from "../migrations/paymentType.js";
 import type * as migrations_run from "../migrations/run.js";
-import type * as transactions from "../transactions.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -40,7 +39,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/index": typeof migrations_index;
   "migrations/paymentType": typeof migrations_paymentType;
   "migrations/run": typeof migrations_run;
-  transactions: typeof transactions;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
