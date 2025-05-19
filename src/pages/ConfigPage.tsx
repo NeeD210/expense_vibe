@@ -2,12 +2,13 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Moon, Sun } from "lucide-react";
 import { SignOutButton } from "../SignOutButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Id } from "../../convex/_generated/dataModel";
+import { useTheme } from "../context/ThemeContext";
 
 type ConfigView = "navigation" | "categories" | "incomeCategories" | "paymentTypes";
 
@@ -22,6 +23,7 @@ export default function ConfigPage() {
   const [newIncomeCategory, setNewIncomeCategory] = useState("");
   const [newPaymentType, setNewPaymentType] = useState("");
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
 
   // Reset currentView to "navigation" when component mounts
   useEffect(() => {
@@ -141,8 +143,16 @@ export default function ConfigPage() {
             </Card>
           </div>
         </div>
-        <div className="mt-auto border-t pt-6">
+        <div className="mt-auto border-t pt-6 flex justify-between items-center">
           <SignOutButton />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="rounded-full"
+          >
+            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+          </Button>
         </div>
       </div>
     );

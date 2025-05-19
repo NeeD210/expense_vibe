@@ -5,6 +5,7 @@ import { ConvexProviderWithAuth0 } from "convex/react-auth0";
 import { ConvexReactClient } from "convex/react";
 import "./index.css";
 import App from "./App";
+import { ThemeProvider } from "./context/ThemeContext";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
@@ -20,7 +21,9 @@ createRoot(document.getElementById("root")!).render(
       }}
     >
       <ConvexProviderWithAuth0 client={convex}>
-        <App />
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
       </ConvexProviderWithAuth0>
     </Auth0Provider>
   </StrictMode>,

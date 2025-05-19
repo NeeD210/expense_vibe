@@ -35,6 +35,7 @@ export function ChartBarLineCombined({ data, config, title, description }: Chart
             accessibilityLayer 
             data={data}
             margin={{ top: 30, right: 20, left: 0, bottom: 5 }}
+            maxBarSize={60}
           >
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis

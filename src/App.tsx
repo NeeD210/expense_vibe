@@ -12,11 +12,13 @@ import AddExpensePage from "./pages/AddExpensePage";
 import AddIncomePage from "./pages/AddIncomePage";
 import ManageTransactionsPage from "./pages/ManageTransactionsPage";
 import PerFiLogo from "./img/PerFi_logo.png";
+import PFIBlackLogo from "./img/PFI_black.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useMutation } from "convex/react";
+import { useTheme } from "./context/ThemeContext";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<keyof typeof pageComponents>('home');
@@ -30,6 +32,8 @@ export default function App() {
 
   const { isLoading: auth0Loading, isAuthenticated, user } = useAuth0();
   const createUser = useMutation(api.auth.createUser);
+
+  const { theme } = useTheme();
 
   const pageComponents = {
     home: HomePage,
@@ -90,10 +94,10 @@ export default function App() {
   }, [auth0Loading, isAuthenticated, user, createUser]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background dark:bg-background">
       <Authenticated>
-        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-4 flex justify-between items-center border-b">
-          <img src={PerFiLogo} alt="PerFi App Logo" className="h-10" />
+        <header className="sticky top-0 z-10 bg-background/80 dark:bg-background/80 backdrop-blur-sm p-4 flex justify-between items-center border-b">
+          <img src={theme === "dark" ? PFIBlackLogo : PerFiLogo} alt="PerFi App Logo" className="h-10" />
           <div className="absolute left-1/2 transform -translate-x-1/2 text-2xl font-bold text-foreground">
             {currentPage === 'home' && 'Home'}
             {currentPage === 'analysis' && 'Analysis'}
@@ -126,7 +130,7 @@ export default function App() {
       </main>
       
       <Authenticated>      
-        <nav className="fixed bottom-0 left-0 right-0 bg-background border-t p-4">
+        <nav className="fixed bottom-0 left-0 right-0 bg-background dark:bg-background border-t p-4">
           <div className="max-w-md mx-auto flex justify-around">
             <Button
               variant="ghost"
@@ -162,7 +166,7 @@ export default function App() {
               {showAddMenu && (
                 <div 
                   ref={addMenuRef} 
-                  className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-popover rounded-lg shadow-lg border p-2 w-40"
+                  className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-popover dark:bg-popover rounded-lg shadow-lg border p-2 w-40"
                 >
                   <Button
                     variant="ghost"
