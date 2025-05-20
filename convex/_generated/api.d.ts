@@ -19,7 +19,6 @@ import type * as http from "../http.js";
 import type * as migrations_category from "../migrations/category.js";
 import type * as migrations_expenseCategory from "../migrations/expenseCategory.js";
 import type * as migrations_index from "../migrations/index.js";
-import type * as migrations_paymentType from "../migrations/paymentType.js";
 import type * as migrations_run from "../migrations/run.js";
 
 /**
@@ -37,7 +36,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/category": typeof migrations_category;
   "migrations/expenseCategory": typeof migrations_expenseCategory;
   "migrations/index": typeof migrations_index;
-  "migrations/paymentType": typeof migrations_paymentType;
   "migrations/run": typeof migrations_run;
 }>;
 export declare const api: FilterApi<

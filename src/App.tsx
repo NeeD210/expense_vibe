@@ -12,7 +12,7 @@ import AddExpensePage from "./pages/AddExpensePage";
 import AddIncomePage from "./pages/AddIncomePage";
 import ManageTransactionsPage from "./pages/ManageTransactionsPage";
 import PerFiLogo from "./img/PerFi_logo.png";
-import PFIBlackLogo from "./img/PFI_black.png";
+import PFIBlackLogo from "./img/perfi_logo_dark.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";

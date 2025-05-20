@@ -209,8 +209,8 @@ export default function ManageTransactionsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col h-[calc(100vh-11rem)]">
+      <div className="flex items-center gap-4 mb-6">
         <Button
           variant="ghost"
           size="icon"
@@ -229,7 +229,7 @@ export default function ManageTransactionsPage() {
           Transactions
         </h2>
       </div>
-      <div className="w-full h-full">
+      <div className="flex-1 overflow-y-auto">
         <div className="space-y-4">
           {transactions.map(transaction => {
             const progress = getDeleteZoneProgress(swipeStates[transaction._id] || 0);

@@ -9,7 +9,6 @@ export default defineSchema({
     cuotas: v.float64(),
     date: v.float64(),
     description: v.string(),
-    paymentType: v.optional(v.string()),
     paymentTypeId: v.optional(v.id("paymentTypes")),
     transactionType: v.string(),
     userId: v.id("users"),

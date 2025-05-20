@@ -9,7 +9,7 @@ This document outlines the step-by-step implementation of an authentication syst
 - Create Auth0 account and application
 - Configure application settings:
   - Application Type: Single Page Application (SPA)
-  - Allowed URLs: `http://localhost:3000` (development)
+  - Allowed URLs: `http://localhost:5137` (development)
   - Configure Google OAuth:
     - Create Google Cloud Project
     - Configure OAuth 2.0 credentials
@@ -62,8 +62,8 @@ import { Auth0Provider } from '@auth0/auth0-react';
 export function Auth0ProviderWithConfig({ children }) {
   return (
     <Auth0Provider
-      domain={process.env.NEXT_PUBLIC_AUTH0_DOMAIN}
-      clientId={process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID}
+      domain={process.env.VITE_PUBLIC_AUTH0_DOMAIN}
+      clientId={process.env.VITE_PUBLIC_AUTH0_CLIENT_ID}
       authorizationParams={{
         redirect_uri: window.location.origin,
         prompt: 'login',

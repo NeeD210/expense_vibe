@@ -1,8 +1,3 @@
----
-description: 
-globs: 
-alwaysApply: true
----
 # Project Rules
 
 ### UI Design
@@ -26,6 +21,3 @@ alwaysApply: true
 - **Use JavaScript** as the primary language.
 - **Follow a consistent style guide** (e.g., Airbnb JavaScript Style Guide) and consider using a linter like ESLint and a formatter like Prettier.
 - **Utilize React best practices** for component design and state management (if applicable).
-
-
-When making changes to the app, update summary.md accordingly
