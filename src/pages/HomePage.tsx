@@ -26,7 +26,7 @@ export default function HomePage() {
   const allExpenses = useQuery(api.expenses.listExpenses) ?? [];
   const allTransactions = useQuery(api.expenses.listAllTransactions) ?? [];
   const allCategories = useQuery(api.expenses.getCategoriesWithIdsIncludingDeleted) ?? [];
-  const paymentTypes = useQuery(api.expenses.getPaymentTypes) ?? [];
+  const paymentTypes = useQuery(api.expenses.getHistoricPaymentTypes) ?? [];
   const [chartType, setChartType] = useState<'doughnut' | 'combined'>('doughnut');
 
   // Helper function to get payment type name

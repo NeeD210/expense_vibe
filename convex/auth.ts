@@ -3,9 +3,24 @@ import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 
 const defaultPaymentTypes = [
-  "Efectivo o Transferencia",
-  "Tarjeta 1",
-  "Tarjeta 2"
+  {
+    name: "Efectivo o Transferencia",
+    isCredit: false,
+    closingDay: undefined,
+    dueDay: undefined
+  },
+  {
+    name: "Tarjeta 1",
+    isCredit: true,
+    closingDay: 25,
+    dueDay: 10
+  },
+  {
+    name: "Tarjeta 2",
+    isCredit: true,
+    closingDay: 25,
+    dueDay: 10
+  }
 ];
 
 const defaultExpenseCategories = [
@@ -77,10 +92,13 @@ export const createUser = mutation({
     });
 
     // Create default payment types for the new user
-    for (const paymentTypeName of defaultPaymentTypes) {
+    for (const paymentType of defaultPaymentTypes) {
       await ctx.db.insert("paymentTypes", {
-        name: paymentTypeName,
+        name: paymentType.name,
         userId,
+        isCredit: paymentType.isCredit,
+        closingDay: paymentType.closingDay,
+        dueDay: paymentType.dueDay,
         softdelete: false,
       });
     }

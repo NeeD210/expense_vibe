@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Auth0Provider } from "@auth0/auth0-react";
 import { ConvexProviderWithAuth0 } from "convex/react-auth0";
 import { ConvexReactClient } from "convex/react";
+import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -22,7 +23,9 @@ createRoot(document.getElementById("root")!).render(
     >
       <ConvexProviderWithAuth0 client={convex}>
         <ThemeProvider>
-          <App />
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
         </ThemeProvider>
       </ConvexProviderWithAuth0>
     </Auth0Provider>

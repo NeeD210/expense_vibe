@@ -9,9 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Id } from "../../convex/_generated/dataModel";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2, CheckCircle, AlertCircle } from "lucide-react";
 import { useGesture } from "@use-gesture/react";
 import { animated, useSpring } from "@react-spring/web";
+import RecurringTransactionList from "@/components/recurring/RecurringTransactionList";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLocation, useNavigate } from "react-router-dom";
 
 type ManageView = "transactions" | "recurring";
 
@@ -26,13 +30,17 @@ interface EditingTransaction {
 }
 
 export default function ManageTransactionsPage() {
-  const [currentView, setCurrentView] = useState<ManageView>("recurring");
+  const [currentView, setCurrentView] = useState<ManageView>("transactions");
+  const [currentTab, setCurrentTab] = useState("all");
   const transactionsData = useQuery(api.expenses.listAllTransactions);
   const categoriesData = useQuery(api.expenses.getCategoriesWithIdsIncludingDeleted);
-  const paymentTypesData = useQuery(api.expenses.getPaymentTypes);
+  const paymentTypesData = useQuery(api.expenses.getHistoricPaymentTypes);
   const updateExpense = useMutation(api.expenses.updateExpense);
   const deleteExpense = useMutation(api.expenses.deleteExpense);
+  const verifyExpense = useMutation(api.expenses.verifyExpense);
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
   
   const [editingTransaction, setEditingTransaction] = useState<EditingTransaction | null>(null);
   const [amountError, setAmountError] = useState<string>("");
@@ -44,6 +52,26 @@ export default function ManageTransactionsPage() {
   const transactions = transactionsData ?? [];
   const categories = categoriesData ?? [];
   const paymentTypes = paymentTypesData ?? [];
+
+  useEffect(() => {
+    // Set the current view based on the route
+    if (location.pathname === "/transactions/recurring") {
+      setCurrentView("recurring");
+    } else {
+      setCurrentView("transactions");
+    }
+  }, [location.pathname]);
+  
+  // Filter transactions based on the selected tab
+  const filteredTransactions = transactions.filter(transaction => {
+    if (currentTab === "unverified") {
+      return transaction.verified === false;
+    }
+    if (currentTab === "verified") {
+      return transaction.verified === true;
+    }
+    return true; // "all" tab
+  });
   
   useEffect(() => {
     const handleResize = () => {
@@ -142,8 +170,8 @@ export default function ManageTransactionsPage() {
   };
 
   const getDeleteZoneProgress = (x: number) => {
-    const threshold = -screenWidth.current * 0.3; // 30% of screen width
-    const max = -screenWidth.current * 0.4; // 40% of screen width
+    const threshold = -screenWidth.current * 0.2; // 30% of screen width
+    const max = -screenWidth.current * 0.3; // 40% of screen width
     if (x > threshold) return 0;
     if (x < max) return 1;
     return (x - threshold) / (max - threshold);
@@ -187,33 +215,258 @@ export default function ManageTransactionsPage() {
     }
   });
 
-  if (currentView === "recurring") {
+  const handleVerify = async (id: Id<"expenses">) => {
+    try {
+      await verifyExpense({ id });
+      toast({
+        title: "Success",
+        description: "Transaction verified successfully",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to verify transaction",
+      });
+    }
+  };
+
+  if (currentView === "transactions") {
     return (
       <div className="flex flex-col h-[calc(100vh-11rem)]">
         <div className="flex-1">
+          <div className="flex items-center gap-4 mb-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/transactions")}
+              className="rounded-full"
+            >
+              <ArrowLeft size={20} />
+            </Button>
+            <h1 className="text-2xl font-bold">Transactions</h1>
+          </div>
+          
+          <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full mb-4">
+            <TabsList className="grid grid-cols-3 w-full">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="verified">Verified</TabsTrigger>
+              <TabsTrigger value="unverified">Unverified</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
           <div className="grid gap-4">
-            <Card
-              onClick={() => setCurrentView("transactions")}
-              className="cursor-pointer transition-shadow hover:shadow-lg"
-            >
-              <div className="p-4">
-                <div className="w-full flex flex-col items-start text-left gap-1">
-                  <span className="font-medium">Transactions</span>
-                  <span className="text-sm text-muted-foreground">View and manage your transactions</span>
-                </div>
-              </div>
-            </Card>
-            <Card
-              onClick={() => setCurrentView("recurring")}
-              className="cursor-pointer transition-shadow hover:shadow-lg"
-            >
-              <div className="p-4">
-                <div className="w-full flex flex-col items-start text-left gap-1">
-                  <span className="font-medium">Recurring</span>
-                  <span className="text-sm text-muted-foreground">Manage your recurring transactions</span>
-                </div>
-              </div>
-            </Card>
+            {filteredTransactions.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6 text-center text-muted-foreground">
+                  No transactions found.
+                </CardContent>
+              </Card>
+            ) : (
+              filteredTransactions.map((transaction) => (
+                <animated.div
+                  key={transaction._id as string}
+                  {...bindSwipe(transaction._id)}
+                  style={{
+                    x: swipeStates[transaction._id as string] || 0,
+                    touchAction: "pan-y",
+                  }}
+                >
+                  <div className="relative">
+                    <div 
+                      className="absolute inset-0 flex items-center justify-end pr-6 bg-red-500 text-white"
+                      style={{
+                        opacity: getDeleteZoneProgress(swipeStates[transaction._id as string] || 0),
+                      }}
+                    >
+                      <Trash2 size={24} />
+                    </div>
+                    <Card className={cn(
+                      "relative shadow-sm", 
+                      transaction.transactionType === "expense" ? "border-l-4 border-l-red-500" : "border-l-4 border-l-green-500"
+                    )}>
+                      <CardContent className="p-4">
+                        {editingTransaction?.id === transaction._id ? (
+                          <div className="flex flex-col space-y-4">
+                            <div className="flex justify-between items-center">
+                              <Label>Date</Label>
+                              <Input
+                                type="date"
+                                value={editingTransaction.date.toISOString().substring(0, 10)}
+                                onChange={(e) => setEditingTransaction({
+                                  ...editingTransaction,
+                                  date: new Date(e.target.value),
+                                })}
+                                className="max-w-[200px]"
+                              />
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <Label>Payment Type</Label>
+                              <Select
+                                value={editingTransaction.paymentTypeId?.toString() || ""}
+                                onValueChange={(value) => setEditingTransaction({
+                                  ...editingTransaction,
+                                  paymentTypeId: value as Id<"paymentTypes">,
+                                })}
+                              >
+                                <SelectTrigger className="max-w-[200px]">
+                                  <SelectValue placeholder="Select payment type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {paymentTypes.map((pt) => (
+                                    <SelectItem key={pt._id as string} value={pt._id as string}>
+                                      {pt.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <Label>Category</Label>
+                              <Select
+                                value={editingTransaction.categoryId?.toString() || ""}
+                                onValueChange={(value) => setEditingTransaction({
+                                  ...editingTransaction,
+                                  categoryId: value as Id<"categories">,
+                                })}
+                              >
+                                <SelectTrigger className="max-w-[200px]">
+                                  <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categories
+                                    .filter(cat => !cat.transactionType || cat.transactionType === transaction.transactionType)
+                                    .map((cat) => (
+                                      <SelectItem key={cat._id as string} value={cat._id as string}>
+                                        {cat.name}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <Label>Description</Label>
+                              <Input
+                                value={editingTransaction.description}
+                                onChange={(e) => setEditingTransaction({
+                                  ...editingTransaction,
+                                  description: e.target.value,
+                                })}
+                                className="max-w-[200px]"
+                              />
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <Label>Amount</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={editingTransaction.amount}
+                                onChange={handleAmountChange}
+                                className="max-w-[200px]"
+                              />
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <Label>Installments</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={editingTransaction.cuotas}
+                                onChange={(e) => setEditingTransaction({
+                                  ...editingTransaction,
+                                  cuotas: parseInt(e.target.value) || 1,
+                                })}
+                                className="max-w-[200px]"
+                              />
+                            </div>
+                            
+                            {amountError && (
+                              <div className="text-red-500 text-sm">{amountError}</div>
+                            )}
+                            
+                            <div className="flex justify-end space-x-2 pt-2">
+                              <Button variant="outline" onClick={() => {
+                                setEditingTransaction(null);
+                                setAmountError("");
+                              }}>
+                                Cancel
+                              </Button>
+                              <Button onClick={handleSaveEdit}>
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between">
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold">{transaction.description}</span>
+                                {transaction.verified === false && (
+                                  <Badge variant="outline" className="text-amber-500 border-amber-500">
+                                    <AlertCircle className="h-3 w-3 mr-1" />
+                                    Unverified
+                                  </Badge>
+                                )}
+                                {transaction.recurringTransactionId && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Recurring
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {new Date(transaction.date).toLocaleDateString()} • 
+                                {getCategoryName(transaction.categoryId)} • 
+                                {getPaymentTypeName(transaction.paymentTypeId)}
+                              </div>
+                              {transaction.cuotas > 1 && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Installments: {transaction.cuotas}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <div className={cn(
+                                "font-semibold",
+                                transaction.transactionType === "expense" ? "text-red-500" : "text-green-500"
+                              )}>
+                                {transaction.transactionType === "expense" ? "-" : "+"} 
+                                ${transaction.amount.toFixed(2)}
+                              </div>
+                              <div className="flex gap-1 mt-1">
+                                {transaction.verified === false && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-green-500 hover:text-green-700"
+                                    onClick={() => handleVerify(transaction._id)}
+                                    title="Verify"
+                                  >
+                                    <CheckCircle className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2"
+                                  onClick={() => handleEdit(transaction)}
+                                  title="Edit"
+                                >
+                                  Edit
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </animated.div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -222,208 +475,20 @@ export default function ManageTransactionsPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-11rem)]">
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center mb-4">
         <Button
           variant="ghost"
-          size="icon"
-          onClick={() => {
-            if (editingTransaction) {
-              setEditingTransaction(null);
-            } else {
-              setCurrentView("recurring");
-            }
-          }}
-          className="rounded-full"
+          size="sm"
+          className="mr-2"
+          onClick={() => navigate("/transactions")}
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back
         </Button>
-        <h2 className="text-2xl font-semibold">
-          Transactions
-        </h2>
+        <h1 className="text-2xl font-bold">Recurring Transactions</h1>
       </div>
-      <div className="flex-1 overflow-y-auto">
-        <div className="space-y-4">
-          {transactions.map(transaction => {
-            const progress = getDeleteZoneProgress(swipeStates[transaction._id] || 0);
-            const scale = 1 + (progress * 0.2); // Scale up to 1.2x
-            const bgColor = `rgb(${220 + (progress * 35)}, ${38 + (progress * 17)}, ${38 + (progress * 17)})`; // Darker red
-
-            return (
-              <div key={transaction._id} className="relative overflow-hidden">
-                <animated.div
-                  {...bindSwipe(transaction._id)}
-                  style={{
-                    x: swipeStates[transaction._id] || 0,
-                    touchAction: 'pan-y pinch-zoom'
-                  }}
-                  className="flex items-center justify-between gap-4 p-4 border rounded-lg bg-background relative z-10"
-                >
-                  {editingTransaction?.id === transaction._id ? (
-                    <div className="flex-1 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="date">Date</Label>
-                          <Input
-                            id="date"
-                            type="date"
-                            value={editingTransaction.date.toISOString().split('T')[0]}
-                            onChange={e => {
-                              const newDate = new Date(e.target.value);
-                              newDate.setUTCHours(12, 0, 0, 0);
-                              setEditingTransaction({ ...editingTransaction, date: newDate });
-                            }}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="category">Category</Label>
-                          <Select 
-                            value={editingTransaction.categoryId} 
-                            onValueChange={value => setEditingTransaction({ ...editingTransaction, categoryId: value as Id<"categories"> })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {categories
-                                .filter(c => c.transactionType === transaction.transactionType)
-                                .map(c => (
-                                <SelectItem key={c._id} value={c._id}>
-                                  {c.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="paymentType">Payment Type</Label>
-                        <Select 
-                          value={editingTransaction.paymentTypeId} 
-                          onValueChange={(value) => setEditingTransaction({ ...editingTransaction, paymentTypeId: value as Id<"paymentTypes"> | undefined })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a payment type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {paymentTypes.map(pt => (
-                              <SelectItem key={pt._id} value={pt._id}>
-                                {pt.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Input
-                          id="description"
-                          type="text"
-                          value={editingTransaction.description}
-                          onChange={e => setEditingTransaction({ ...editingTransaction, description: e.target.value })}
-                          placeholder="Enter description"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="amount" className={cn(amountError && "text-destructive")}>
-                          Amount
-                        </Label>
-                        <Input
-                          id="amount"
-                          type="number"
-                          step="1"
-                          value={editingTransaction.amount}
-                          onChange={handleAmountChange}
-                          placeholder="0"
-                          className={cn(
-                            amountError && "border-destructive focus-visible:ring-destructive"
-                          )}
-                        />
-                        {amountError && (
-                          <p className="text-sm text-destructive">
-                            {amountError}
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="cuotas">Cuotas</Label>
-                        <Input
-                          id="cuotas"
-                          type="number"
-                          value={editingTransaction.cuotas}
-                          onChange={(e) =>
-                            setEditingTransaction({
-                              ...editingTransaction,
-                              cuotas: parseInt(e.target.value) || 0,
-                            })
-                          }
-                        />
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <Button 
-                          variant="destructive" 
-                          onClick={() => {
-                            handleDelete(editingTransaction.id);
-                            setEditingTransaction(null);
-                          }}
-                        >
-                          Delete
-                        </Button>
-                        <div className="flex gap-2">
-                          <Button variant="outline" onClick={() => setEditingTransaction(null)}>Cancel</Button>
-                          <Button onClick={handleSaveEdit}>Save</Button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div 
-                        className="flex-1 cursor-pointer hover:bg-accent/50 p-2 rounded-md transition-colors"
-                        onClick={() => handleEdit(transaction)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-foreground">{getCategoryName(transaction.categoryId)}</div>
-                            <div className="text-sm text-muted-foreground">{transaction.description}</div>
-                            <div className="text-xs text-muted-foreground/70">
-                              {new Date(transaction.date).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className={cn(
-                              "font-medium",
-                              transaction.transactionType === 'income' ? 'text-green-600' : 'text-foreground'
-                            )}>
-                              {transaction.transactionType === 'income' ? '+' : ''}${Math.round(transaction.amount)}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {getPaymentTypeName(transaction.paymentTypeId)}
-                              {transaction.cuotas && transaction.cuotas > 1 && ` - ${transaction.cuotas} cuota${transaction.cuotas > 1 ? 's' : ''}`}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </animated.div>
-                <div 
-                  className="absolute inset-0 flex items-center justify-end pr-4 text-destructive-foreground rounded-lg transition-colors"
-                  style={{ backgroundColor: bgColor }}
-                >
-                  <animated.div style={{ transform: `scale(${scale})` }}>
-                    <Trash2 className="h-6 w-6" />
-                  </animated.div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      
+      <RecurringTransactionList />
     </div>
   );
 } 

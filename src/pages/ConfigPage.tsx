@@ -9,19 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Id } from "../../convex/_generated/dataModel";
 import { useTheme } from "../context/ThemeContext";
+import { PaymentTypeList } from "../components/PaymentTypeList";
 
 type ConfigView = "navigation" | "categories" | "incomeCategories" | "paymentTypes";
 
 export default function ConfigPage() {
   const [currentView, setCurrentView] = useState<ConfigView>("navigation");
   const categories = useQuery(api.expenses.getCategoriesWithIds) ?? [];
-  const paymentTypes = useQuery(api.expenses.getPaymentTypes) ?? [];
   const updateCategories = useMutation(api.expenses.updateCategories);
-  const addPaymentType = useMutation(api.expenses.addPaymentType);
-  const removePaymentType = useMutation(api.expenses.removePaymentType);
   const [newExpenseCategory, setNewExpenseCategory] = useState("");
   const [newIncomeCategory, setNewIncomeCategory] = useState("");
-  const [newPaymentType, setNewPaymentType] = useState("");
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
 
@@ -71,34 +68,6 @@ export default function ConfigPage() {
         variant: "destructive",
         title: "Error",
         description: "Failed to remove category"
-      });
-    }
-  };
-
-  const handleAddPaymentType = async () => {
-    if (!newPaymentType.trim()) return;
-    try {
-      await addPaymentType({ name: newPaymentType.trim() });
-      setNewPaymentType("");
-      toast({ title: "Payment type added" });
-    } catch (error) {
-      toast({ 
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to add payment type"
-      });
-    }
-  };
-  
-  const handleRemovePaymentType = async (id: Id<"paymentTypes">) => {
-    try {
-      await removePaymentType({ id });
-      toast({ title: "Payment type removed" });
-    } catch (error) {
-      toast({ 
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to remove payment type"
       });
     }
   };
@@ -175,6 +144,7 @@ export default function ConfigPage() {
            "Payment Types"}
         </h2>
       </div>
+
       {currentView === "categories" ? (
         <div className="space-y-4">
           <div className="flex gap-2">
@@ -244,36 +214,7 @@ export default function ConfigPage() {
           </div>
         </div>
       ) : (
-        <>
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              value={newPaymentType}
-              onChange={e => setNewPaymentType(e.target.value)}
-              placeholder="New payment type"
-              className="flex-1"
-            />
-            <Button onClick={handleAddPaymentType}>
-              Add
-            </Button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {[...paymentTypes].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())).map(paymentType => (
-              <Card key={paymentType._id}>
-                <CardContent className="flex items-center justify-between p-4">
-                  <span>{paymentType.name}</span>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleRemovePaymentType(paymentType._id)}
-                  >
-                    Remove
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </>
+        <PaymentTypeList />
       )}
     </div>
   );

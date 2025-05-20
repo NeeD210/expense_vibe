@@ -7,8 +7,10 @@ import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { FcGoogle } from "react-icons/fc";
 
+type PageType = "home" | "analysis" | "config" | "add" | "income" | "recurring" | "transactions" | "manage";
+
 interface SignInFormProps {
-  setCurrentPage: Dispatch<SetStateAction<"home" | "analysis" | "config" | "add" | "income" | "manage">>;
+  setCurrentPage: React.Dispatch<React.SetStateAction<PageType>>;
 }
 
 export function SignInForm({ setCurrentPage }: SignInFormProps) {

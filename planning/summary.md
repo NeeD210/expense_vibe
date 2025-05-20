@@ -45,9 +45,28 @@ The database is managed using Convex and includes the following tables:
     *   `userId`: (ID referencing `users`) The user who made the transaction.
     *   `deletedAt`: (Optional Number) Timestamp of soft deletion.
     *   `softdelete`: (Optional Boolean) Flag for soft deletion.
+    *   `verified`: (Optional Boolean) Whether the transaction has been verified by the user.
+    *   `recurringTransactionId`: (Optional ID referencing `recurringTransactions`) Reference to the recurring transaction that generated this transaction.
     *   *Index*: `by_user` on `userId`.
 
-## Backend Functions (Convex - in `convex/expenses.ts` and `convex/auth.ts`)
+*   **`recurringTransactions`**: Stores recurring transaction definitions.
+    *   `userId`: (ID referencing `users`) The user who owns this recurring transaction.
+    *   `description`: (String) Description of the transaction.
+    *   `amount`: (Float64) The transaction amount.
+    *   `categoryId`: (ID referencing `categories`) The category of the transaction.
+    *   `paymentTypeId`: (ID referencing `paymentTypes`) The payment method used.
+    *   `transactionType`: (String) "expense" or "income".
+    *   `frequency`: (String) "daily", "weekly", "monthly", or "yearly".
+    *   `startDate`: (Float64) When the recurring transaction starts.
+    *   `endDate`: (Optional Float64) When the recurring transaction ends.
+    *   `lastProcessedDate`: (Optional Float64) When the recurring transaction was last processed.
+    *   `nextDueDateCalculationDay`: (Optional Number) Day of the month for monthly/yearly transactions.
+    *   `isActive`: (Boolean) Whether the recurring transaction is currently active.
+    *   `softdelete`: (Optional Boolean) Flag for soft deletion.
+    *   *Index*: `by_user_isActive_startDate` on `userId`, `isActive`, and `startDate`.
+    *   *Index*: `by_isActive_lastProcessedDate` on `isActive` and `lastProcessedDate`.
+
+## Backend Functions (Convex)
 
 ### Authentication (`convex/auth.ts`)
 *   **`createUser` (mutation)**: Creates a new user or updates an existing one based on `auth0Id` or `email`. Initializes default categories (expense & income) and payment types for new users.
@@ -59,7 +78,8 @@ The database is managed using Convex and includes the following tables:
 *   **`listExpenses` (query)**: Lists all (non-soft-deleted) expense transactions for the current user.
 *   **`listIncome` (query)**: Lists all (non-soft-deleted) income transactions for the current user.
 *   **`deleteExpense` (mutation)**: Soft-deletes a transaction.
-*   **`updateExpense` (mutation)**: Updates an existing transaction.
+*   **`updateExpense` (mutation)**: Updates an existing transaction and marks it as verified.
+*   **`verifyExpense` (mutation)**: Marks a transaction as verified without making other changes.
 *   **`getLastTransaction` (query)**: Retrieves the most recent transaction for the user.
 *   **`getCategories` (query)**: Retrieves category names for the user (or default if none).
 *   **`getCategoriesWithIds` (query)**: Retrieves categories (name, ID, type) for the user, excluding soft-deleted.
@@ -72,49 +92,68 @@ The database is managed using Convex and includes the following tables:
 *   **`initializeDefaultPaymentTypes` (mutation)**: Creates default payment types if the user doesn't have any.
 *   **`updatePaymentTypes` (mutation)**: Updates the user's list of payment types (adds new, soft-deletes missing ones).
 
-## Frontend (React with TypeScript - in `src/`)
+### Recurring Transactions (`convex/recurring.ts`)
+*   **`addRecurringTransaction` (mutation)**: Creates a new recurring transaction.
+*   **`updateRecurringTransaction` (mutation)**: Updates an existing recurring transaction.
+*   **`deleteRecurringTransaction` (mutation)**: Soft-deletes a recurring transaction.
+*   **`toggleRecurringTransactionStatus` (mutation)**: Activates or deactivates a recurring transaction.
+*   **`listRecurringTransactions` (query)**: Lists all active recurring transactions for the current user.
+*   **`processRecurringTransactions` (action)**: Processes recurring transactions that are due.
+*   **`getRecurringTransactionsToProcess` (query)**: Gets recurring transactions that need to be processed.
+*   **`generateTransactionFromRecurring` (mutation)**: Generates a transaction from a recurring transaction.
 
-The main application is structured in `src/App.tsx` which handles authentication and navigation.
+## Frontend (React with TypeScript)
 
 ### Core Components:
-*   **`App.tsx`**:
-    *   Manages authentication state using Auth0 and Convex.
-    *   Calls `api.auth.createUser` on user login.
-    *   Handles client-side navigation between pages.
-    *   Displays a bottom navigation bar.
+*   **`App.tsx`**: Manages authentication and navigation.
 *   **`SignInForm.tsx`**: Component for user sign-in.
 *   **`SignOutButton.tsx`**: Component for user sign-out.
 
-### Pages (`src/pages/`):
+### Pages:
+*   **`HomePage.tsx`**: Dashboard with charts and recent transactions.
+*   **`AnalysisPage.tsx`**: Placeholder for future analysis features.
+*   **`AddExpensePage.tsx`**: Form to add new expenses.
+*   **`AddIncomePage.tsx`**: Form to add new income entries.
+*   **`ManageTransactionsPage.tsx`**: Lists and manages all transactions with verification workflow.
+*   **`ConfigPage.tsx`**: Manages user settings and categories.
 
-*   **`HomePage.tsx`**:
-    *   Displays a dashboard with charts (current month expense doughnut chart, income vs. expenses combined chart).
-    *   Lists recent transactions.
-    *   Uses: `api.expenses.listExpenses`, `api.expenses.listAllTransactions`, `api.expenses.getCategoriesWithIdsIncludingDeleted`, `api.expenses.getPaymentTypes`.
+### Recurring Transactions Components:
+*   **`RecurringTransactionList.tsx`**: Displays and manages recurring transactions.
+*   **`RecurringTransactionForm.tsx`**: Form for creating and editing recurring transactions.
 
-*   **`AnalysisPage.tsx`**:
-    *   Currently a placeholder page ("Analysis coming soon...").
-    *   No backend calls.
+## Recent Updates
 
-*   **`AddExpensePage.tsx`**:
-    *   Form to add a new expense.
-    *   Prefills category/payment type from last transaction or defaults.
-    *   Uses: `api.expenses.getCategoriesWithIds`, `api.expenses.getPaymentTypes`, `api.expenses.getLastTransaction`, `api.expenses.addExpense`.
+### Phase 2: Recurring Transactions & Verification Workflow (Implemented)
 
-*   **`AddIncomePage.tsx`**:
-    *   Form to add a new income entry.
-    *   Uses: `api.expenses.getCategoriesWithIds`, `api.expenses.addExpense` (with `transactionType: "income"`).
+The application now supports creating and managing recurring transactions, which automatically generate actual transaction entries. This functionality includes:
 
-*   **`ManageTransactionsPage.tsx`**:
-    *   Lists all transactions (income and expenses).
-    *   Allows editing and deleting transactions (swipe-to-delete).
-    *   Has a "Recurring" section (currently seems to be a placeholder or WIP).
-    *   Uses: `api.expenses.listAllTransactions`, `api.expenses.getCategoriesWithIdsIncludingDeleted`, `api.expenses.getPaymentTypes`, `api.expenses.updateExpense`, `api.expenses.deleteExpense`.
+1. **Database Structure:**
+   - New `recurringTransactions` table to store recurring transaction definitions
+   - Enhanced `expenses` table with `verified` status and `recurringTransactionId` field
 
-*   **`ConfigPage.tsx`**:
-    *   Manages user settings:
-        *   Expense Categories (add/remove)
-        *   Income Categories (add/remove)
-        *   Payment Types (add/remove)
-    *   Includes a sign-out button.
-    *   Uses: `api.expenses.getCategoriesWithIds`, `api.expenses.getPaymentTypes`, `api.expenses.updateCategories`, `api.expenses.addPaymentType`, `api.expenses.removePaymentType`. 
+2. **Backend Functionality:**
+   - CRUD operations for recurring transactions
+   - Automated transaction generation through scheduled tasks
+   - Support for different frequencies (daily, weekly, monthly, yearly)
+   - Auto-generated transactions are marked as unverified until user review
+   - Verification workflow for reviewing auto-generated transactions
+
+3. **User Interface:**
+   - Added "Recurring Transactions" section to Manage Transactions page
+   - Form for creating and editing recurring transactions with frequency settings
+   - Visual indicators for unverified transactions and recurring source
+   - Verification workflow with dedicated verify button for unverified transactions
+   - Tabs to filter transactions by verification status (All, Verified, Unverified)
+
+4. **Technical Enhancements:**
+   - Daily processing of recurring transactions at midnight
+   - Handling of different frequencies and calculation days
+   - Support for specific monthly due dates
+   - Integration with existing installment payment scheduling
+
+### Next Steps
+
+1. **Phase 3 Planning:**
+   - Future payment projection and visualization
+   - Enhanced reporting based on recurring patterns
+   - Long-term financial forecasting 

@@ -4,24 +4,30 @@ import { SignInForm } from "./SignInForm";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
-import { Home, PieChart, Settings, Plus, List, TrendingDown, TrendingUp } from "lucide-react";
+import { Home, PieChart, Settings, Plus, List, TrendingDown, TrendingUp, Repeat } from "lucide-react";
 import HomePage from "./pages/HomePage";
 import AnalysisPage from "./pages/AnalysisPage";
 import ConfigPage from "./pages/ConfigPage";
 import AddExpensePage from "./pages/AddExpensePage";
 import AddIncomePage from "./pages/AddIncomePage";
 import ManageTransactionsPage from "./pages/ManageTransactionsPage";
+import TransactionsNavigationPage from "./pages/TransactionsNavigationPage";
+import RecurringTransactionForm from "./components/recurring/RecurringTransactionForm";
 import PerFiLogo from "./img/PerFi_logo.png";
 import PFIBlackLogo from "./img/perfi_logo_dark.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useMutation } from "convex/react";
 import { useTheme } from "./context/ThemeContext";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+
+type PageType = "home" | "analysis" | "config" | "add" | "income" | "recurring" | "transactions" | "manage";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<keyof typeof pageComponents>('home');
+  const [currentPage, setCurrentPage] = useState<PageType>("home");
   const [showAddMenu, setShowAddMenu] = useState(false);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const addMenuRef = useRef<HTMLDivElement>(null);
@@ -29,22 +35,27 @@ export default function App() {
   const initializeDefaultsDone = useRef(false);
   const [configKey, setConfigKey] = useState(0);
   const [manageKey, setManageKey] = useState(0);
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Drawer state
+  const [showExpenseDrawer, setShowExpenseDrawer] = useState(false);
+  const [showIncomeDrawer, setShowIncomeDrawer] = useState(false);
+  const [showRecurringDrawer, setShowRecurringDrawer] = useState(false);
 
   const { isLoading: auth0Loading, isAuthenticated, user } = useAuth0();
   const createUser = useMutation(api.auth.createUser);
 
   const { theme } = useTheme();
 
-  const pageComponents = {
-    home: HomePage,
-    analysis: AnalysisPage,
-    config: () => <ConfigPage key={configKey} />,
-    add: AddExpensePage,
-    income: AddIncomePage,
-    manage: () => <ManageTransactionsPage key={manageKey} />,
-  };
-
-  const CurrentPageComponent = pageComponents[currentPage];
+  useEffect(() => {
+    // Update currentPage based on the current route
+    const path = location.pathname;
+    if (path === "/") setCurrentPage("home");
+    else if (path === "/analysis") setCurrentPage("analysis");
+    else if (path === "/config") setCurrentPage("config");
+    else if (path === "/transactions") setCurrentPage("transactions");
+  }, [location.pathname]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -103,15 +114,35 @@ export default function App() {
             {currentPage === 'analysis' && 'Analysis'}
             {currentPage === 'add' && 'Expense'}
             {currentPage === 'income' && 'Income'}
-            {currentPage === 'manage' && 'Manage Transactions'}
+            {currentPage === 'recurring' && 'Recurring Transaction'}
+            {currentPage === 'transactions' && 'Transactions'}
             {currentPage === 'config' && 'Settings'}
+            {currentPage === 'manage' && 'Manage Transactions'}
           </div>
         </header>
       </Authenticated>
       
       <main className="flex-1 flex flex-col p-4 pb-20">
         <Authenticated>
-          <CurrentPageComponent />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/analysis" element={<AnalysisPage />} />
+            <Route path="/config" element={<ConfigPage key={configKey} />} />
+            <Route path="/transactions" element={<TransactionsNavigationPage />} />
+            <Route path="/transactions/manage" element={<ManageTransactionsPage key={manageKey} />} />
+            <Route path="/transactions/recurring" element={<ManageTransactionsPage key={manageKey} />} />
+          </Routes>
+          
+          {/* Drawer components */}
+          {showExpenseDrawer && <AddExpensePage onOpenChange={setShowExpenseDrawer} />}
+          {showIncomeDrawer && <AddIncomePage onOpenChange={setShowIncomeDrawer} />}
+          
+          {/* RecurringTransactionForm component */}
+          {showRecurringDrawer && (
+            <RecurringTransactionForm 
+              onOpenChange={setShowRecurringDrawer}
+            />
+          )}
         </Authenticated>
         
         <Unauthenticated>
@@ -135,7 +166,7 @@ export default function App() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCurrentPage('home')}
+              onClick={() => navigate("/")}
               className={cn(
                 "rounded-full transition-colors",
                 currentPage === 'home' ? 'text-primary' : 'text-muted-foreground'
@@ -146,7 +177,7 @@ export default function App() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCurrentPage('analysis')}
+              onClick={() => navigate("/analysis")}
               className={cn(
                 "rounded-full transition-colors",
                 currentPage === 'analysis' ? 'text-primary' : 'text-muted-foreground'
@@ -171,7 +202,7 @@ export default function App() {
                   <Button
                     variant="ghost"
                     onClick={() => {
-                      setCurrentPage('add');
+                      setShowExpenseDrawer(true);
                       setShowAddMenu(false);
                     }}
                     className="flex items-center w-full justify-start gap-2"
@@ -182,7 +213,7 @@ export default function App() {
                   <Button
                     variant="ghost"
                     onClick={() => {
-                      setCurrentPage('income');
+                      setShowIncomeDrawer(true);
                       setShowAddMenu(false);
                     }}
                     className="flex items-center w-full justify-start gap-2"
@@ -190,19 +221,27 @@ export default function App() {
                     <TrendingUp size={18} />
                     Income
                   </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setShowRecurringDrawer(true);
+                      setShowAddMenu(false);
+                    }}
+                    className="flex items-center w-full justify-start gap-2"
+                  >
+                    <Repeat size={18} />
+                    Recurring
+                  </Button>
                 </div>
               )}
             </div>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => {
-                setCurrentPage('manage');
-                setManageKey(prev => prev + 1);
-              }}
+              onClick={() => navigate("/transactions")}
               className={cn(
                 "rounded-full transition-colors",
-                currentPage === 'manage' ? 'text-primary' : 'text-muted-foreground'
+                currentPage === 'transactions' ? 'text-primary' : 'text-muted-foreground'
               )}
             >
               <List size={24} />
@@ -211,7 +250,7 @@ export default function App() {
               variant="ghost"
               size="icon"
               onClick={() => {
-                setCurrentPage('config');
+                navigate("/config");
                 setConfigKey(prev => prev + 1);
               }}
               className={cn(
