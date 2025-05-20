@@ -3,16 +3,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { Id } from "../_generated/dataModel";
 
-// Import all migrations
-import * as paymentTypeMigration from "./paymentType";
-import * as categoryMigration from "./category";
-
 type MigrationReturnType = {
-  paymentType: {
-    totalProcessed: number;
-    totalUpdated: number;
-    totalErrors: number;
-  };
   category: {
     totalProcessed: number;
     totalUpdated: number;
@@ -25,11 +16,6 @@ type MigrationReturnType = {
 export const runAll = internalMutation({
   args: {},
   returns: v.object({
-    paymentType: v.object({
-      totalProcessed: v.number(),
-      totalUpdated: v.number(),
-      totalErrors: v.number(),
-    }),
     category: v.object({
       totalProcessed: v.number(),
       totalUpdated: v.number(),
@@ -38,16 +24,6 @@ export const runAll = internalMutation({
     }),
   }),
   handler: async (ctx): Promise<MigrationReturnType> => {
-    // Run payment type migration
-    const paymentTypeResults: {
-      totalProcessed: number;
-      totalUpdated: number;
-      totalErrors: number;
-    } = await ctx.runMutation(
-      internal.migrations.paymentType.runPaymentTypeMigration,
-      {}
-    );
-
     // Run category migration
     const categoryResults: {
       totalProcessed: number;
@@ -60,7 +36,6 @@ export const runAll = internalMutation({
     );
 
     return {
-      paymentType: paymentTypeResults,
       category: categoryResults,
     };
   },
