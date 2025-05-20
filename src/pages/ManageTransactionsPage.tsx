@@ -39,10 +39,19 @@ export default function ManageTransactionsPage() {
   const swipePositions = useRef<Record<string, number>>({});
   const [swipeStates, setSwipeStates] = useState<Record<string, number>>({});
   const hasVibrated = useRef<Record<string, boolean>>({});
+  const screenWidth = useRef<number>(window.innerWidth);
   
   const transactions = transactionsData ?? [];
   const categories = categoriesData ?? [];
   const paymentTypes = paymentTypesData ?? [];
+  
+  useEffect(() => {
+    const handleResize = () => {
+      screenWidth.current = window.innerWidth;
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   const handleEdit = (transaction: any) => {
     setEditingTransaction({
@@ -133,8 +142,8 @@ export default function ManageTransactionsPage() {
   };
 
   const getDeleteZoneProgress = (x: number) => {
-    const threshold = -150;
-    const max = -200;
+    const threshold = -screenWidth.current * 0.3; // 30% of screen width
+    const max = -screenWidth.current * 0.4; // 40% of screen width
     if (x > threshold) return 0;
     if (x < max) return 1;
     return (x - threshold) / (max - threshold);
@@ -150,21 +159,24 @@ export default function ManageTransactionsPage() {
   const bindSwipe = useGesture({
     onDrag: ({ movement: [x], down, args: [id] }) => {
       if (down) {
-        // Only allow left swipe and cap at -200px
-        const newX = Math.max(-200, Math.min(0, x));
+        // Only allow left swipe and cap at 40% of screen width
+        const maxSwipe = -screenWidth.current * 0.4;
+        const newX = Math.max(maxSwipe, Math.min(0, x));
         swipePositions.current[id] = newX;
         setSwipeStates(prev => ({ ...prev, [id]: newX }));
 
-        // Trigger haptic feedback when crossing threshold
-        if (newX < -150 && !hasVibrated.current[id]) {
+        // Trigger haptic feedback when crossing threshold (30% of screen width)
+        const threshold = -screenWidth.current * 0.3;
+        if (newX < threshold && !hasVibrated.current[id]) {
           triggerHapticFeedback();
           hasVibrated.current[id] = true;
-        } else if (newX >= -150) {
+        } else if (newX >= threshold) {
           hasVibrated.current[id] = false;
         }
       } else {
-        // If swiped far enough, trigger delete
-        if (swipePositions.current[id] < -150) {
+        // If swiped far enough (30% of screen width), trigger delete
+        const threshold = -screenWidth.current * 0.3;
+        if (swipePositions.current[id] < threshold) {
           handleDelete(id as Id<"expenses">);
         }
         // Reset position
