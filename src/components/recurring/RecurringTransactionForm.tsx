@@ -206,212 +206,215 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
 
   return (
     <Drawer open={true} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh] overflow-y-auto">
-        <DrawerHeader>
-          <DrawerTitle>
-            {editId ? 'Edit Recurring Transaction' : 'Add Recurring Transaction'}
-          </DrawerTitle>
-        </DrawerHeader>
-        
-        <div className="px-4">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {validationError && (
-              <div className="bg-destructive/10 p-3 rounded-md text-destructive text-sm">
-                {validationError}
-              </div>
-            )}
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Start Date</Label>
-                <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen} modal={true}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={(date) => {
-                        if (date) {
-                          setStartDate(date);
-                          setIsStartCalendarOpen(false);
-                          if (endDate && endDate < date) {
-                            setEndDate(undefined);
-                          }
-                        }
-                      }}
-                      initialFocus
-                      className="rounded-md border"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+      <DrawerContent className="bg-background">
+        <div className="mx-auto w-full max-w-md flex flex-col overflow-y-auto max-h-[90vh] rounded-t-[10px]">
+          <DrawerHeader className="p-4">
+            <DrawerTitle>{editId ? 'Edit' : 'Add'} Recurring Transaction</DrawerTitle>
+          </DrawerHeader>
+
+          <div className="p-4 flex-grow">
+            <form onSubmit={handleSubmit} id="recurring-transaction-form" className="flex flex-col gap-4 h-full">
+              {validationError && (
+                <div className="bg-destructive/10 p-3 rounded-md text-destructive text-sm">
+                  {validationError}
+                </div>
+              )}
               
-              <div className="space-y-2">
-                <Label>End Date (Optional)</Label>
-                <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen} modal={true}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !endDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {endDate ? format(endDate, "PPP") : <span>No end date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
-                    <div className="p-2">
-                      <Button 
-                        variant="ghost" 
-                        className="w-full justify-start mb-2"
-                        onClick={() => {
-                          setEndDate(undefined);
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Date</Label>
+                  <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen} modal={true}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={(date) => {
+                          if (date) {
+                            setStartDate(date);
+                            setIsStartCalendarOpen(false);
+                            if (endDate && endDate < date) {
+                              setEndDate(undefined);
+                            }
+                          }
+                        }}
+                        initialFocus
+                        className="rounded-md border"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>End Date (Optional)</Label>
+                  <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen} modal={true}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {endDate ? format(endDate, "PPP") : <span>No end date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start" sideOffset={4}>
+                      <div className="p-2">
+                        <Button 
+                          variant="ghost" 
+                          className="w-full justify-start mb-2"
+                          onClick={() => {
+                            setEndDate(undefined);
+                            setIsEndCalendarOpen(false);
+                          }}
+                        >
+                          No end date
+                        </Button>
+                      </div>
+                      <Calendar
+                        mode="single"
+                        selected={endDate}
+                        onSelect={(date) => {
+                          setEndDate(date);
                           setIsEndCalendarOpen(false);
                         }}
-                      >
-                        No end date
-                      </Button>
-                    </div>
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={(date) => {
-                        setEndDate(date);
-                        setIsEndCalendarOpen(false);
-                      }}
-                      disabled={(date) => date < startDate}
-                      initialFocus
-                      className="rounded-md border"
-                    />
-                  </PopoverContent>
-                </Popover>
+                        disabled={(date) => date < startDate}
+                        initialFocus
+                        className="rounded-md border"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Transaction Type</Label>
-                <Select value={transactionType} onValueChange={(value) => {
-                  setTransactionType(value as 'expense' | 'income');
-                  setCategoryId(''); // Reset category when changing type
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="expense">Expense</SelectItem>
-                    <SelectItem value="income">Income</SelectItem>
-                  </SelectContent>
-                </Select>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="type">Transaction Type</Label>
+                  <Select value={transactionType} onValueChange={(value) => {
+                    setTransactionType(value as 'expense' | 'income');
+                    setCategoryId(''); // Reset category when changing type
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="expense">Expense</SelectItem>
+                      <SelectItem value="income">Income</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="frequency">Frequency</Label>
+                  <Select value={frequency} onValueChange={setFrequency}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {transactionType === 'expense' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentType">Payment Method</Label>
+                    <Select value={paymentTypeId} onValueChange={(value) => setPaymentTypeId(value as Id<'paymentTypes'> | '')}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {paymentTypes
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map(pt => (
+                            <SelectItem key={pt._id} value={pt._id}>
+                              <div className="flex items-center gap-2">
+                                <span>{pt.name}</span>
+                                {pt.isCredit ? (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    Credit
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Debit
+                                  </span>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<'categories'> | '')}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredCategories
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(cat => (
+                          <SelectItem key={cat._id} value={cat._id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="frequency">Frequency</Label>
-                <Select value={frequency} onValueChange={setFrequency}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select frequency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="biweekly">Bi-weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Description</Label>
+                <Input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Enter description"
+                />
               </div>
-            </div>
-            
-            {transactionType === 'expense' && (
               <div className="space-y-2">
-                <Label htmlFor="paymentType">Payment Method</Label>
-                <Select value={paymentTypeId} onValueChange={(value) => setPaymentTypeId(value as Id<'paymentTypes'> | '')}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {paymentTypes
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map(pt => (
-                        <SelectItem key={pt._id} value={pt._id}>
-                          <div className="flex items-center gap-2">
-                            <span>{pt.name}</span>
-                            {pt.isCredit ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Credit
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Debit
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                <Label>Amount</Label>
+                <Input
+                  type="text"
+                  value={amount}
+                  onChange={handleAmountChange}
+                  placeholder="$0.00"
+                  inputMode="numeric"
+                />
               </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<'categories'> | '')}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCategories
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(cat => (
-                      <SelectItem key={cat._id} value={cat._id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter description"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Amount</Label>
-              <Input
-                type="text"
-                value={amount}
-                onChange={handleAmountChange}
-                placeholder="$0.00"
-                inputMode="numeric"
-              />
-            </div>
-            
-            <DrawerFooter className="pt-2">
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : editId ? 'Update Transaction' : 'Create Transaction'}
-              </Button>
-              <DrawerClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DrawerClose>
-            </DrawerFooter>
-          </form>
+            </form>
+          </div>
+
+          <DrawerFooter className="p-4 mt-auto">
+            <Button type="submit" form="recurring-transaction-form" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : (editId ? 'Save Changes' : 'Add Transaction')}
+            </Button>
+            <DrawerClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DrawerClose>
+          </DrawerFooter>
         </div>
       </DrawerContent>
     </Drawer>

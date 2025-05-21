@@ -131,104 +131,104 @@ export default function AddIncomePage({ onOpenChange }: AddIncomePageProps) {
 
   return (
     <Drawer open={true} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh] overflow-y-auto">
-        <DrawerHeader>
-          <DrawerTitle>Add Income</DrawerTitle>
-        </DrawerHeader>
-        
-        <div className="px-4">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="space-y-2">
-              <Label>Date</Label>
-              <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(date) => {
-                      if (date) {
-                        setDate(date);
-                        setIsCalendarOpen(false);
-                      }
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<"categories"> | "")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(c => (
-                    <SelectItem key={c._id} value={c._id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                type="text"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder="Enter description"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="amount" className={cn(amountError && "text-destructive")}>
-                Amount
-              </Label>
-              <Input
-                id="amount"
-                type="text"
-                value={amount}
-                onChange={handleAmountChange}
-                placeholder="$0.00"
-                inputMode="numeric"
-                className={cn(
-                  amountError && "border-destructive focus-visible:ring-destructive"
+      <DrawerContent className="bg-background">
+        <div className="mx-auto w-full max-w-md flex flex-col overflow-y-auto max-h-[90vh] rounded-t-[10px]">
+          <DrawerHeader className="p-4">
+            <DrawerTitle>Add Income</DrawerTitle>
+          </DrawerHeader>
+          
+          <div className="p-4">
+            <form onSubmit={handleSubmit} id="add-income-form" className="flex flex-col gap-4">
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen} modal={true}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={(date) => {
+                        if (date) {
+                          setDate(date);
+                          setIsCalendarOpen(false);
+                        }
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<"categories"> | "")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(c => (
+                      <SelectItem key={c._id} value={c._id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  type="text"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Enter description"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="amount" className={cn(amountError && "text-destructive")}>
+                  Amount
+                </Label>
+                <Input
+                  id="amount"
+                  type="text"
+                  value={amount}
+                  onChange={handleAmountChange}
+                  placeholder="$0.00"
+                  inputMode="numeric"
+                  className={cn(
+                    amountError && "border-destructive focus-visible:ring-destructive"
+                  )}
+                />
+                {amountError && (
+                  <p className="text-sm text-destructive">
+                    Please enter a valid amount greater than 0
+                  </p>
                 )}
-              />
-              {amountError && (
-                <p className="text-sm text-destructive">
-                  Please enter a valid amount greater than 0
-                </p>
-              )}
-            </div>
-            
-            <DrawerFooter className="pt-2">
-              <Button type="submit" className="w-full">
-                Add Income
-              </Button>
-              <DrawerClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DrawerClose>
-            </DrawerFooter>
-          </form>
+              </div>
+            </form>
+          </div>
+          
+          <DrawerFooter className="p-4 mt-auto">
+            <Button type="submit" form="add-income-form">Add Income</Button>
+            <DrawerClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DrawerClose>
+          </DrawerFooter>
         </div>
       </DrawerContent>
     </Drawer>

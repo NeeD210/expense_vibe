@@ -742,3 +742,50 @@ export const getHistoricPaymentTypes = query({
     return paymentTypes;
   },
 });
+
+export const migratePaymentSchedules = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Get all expenses that are not softdeleted and have a paymentTypeId
+    const expenses = await ctx.db
+      .query("expenses")
+      .filter(q => q.and(
+        q.neq(q.field("softdelete"), true),
+        q.neq(q.field("paymentTypeId"), undefined)
+      ))
+      .collect();
+
+    let migratedCount = 0;
+    for (const expense of expenses) {
+      // Check if there are already payment schedules for this expense
+      const existingSchedules = await ctx.db
+        .query("paymentSchedules")
+        .withIndex("by_expenseId", q => q.eq("expenseId", expense._id))
+        .filter(q => q.eq(q.field("softdelete"), false))
+        .collect();
+      if (existingSchedules.length > 0) continue; // Already migrated
+
+      // Skip if paymentTypeId is undefined
+      if (!expense.paymentTypeId) continue;
+
+      // Calculate nextDueDate if not present
+      let nextDueDate = expense.nextDueDate;
+      if (!nextDueDate) {
+        nextDueDate = await calculateNextDueDate(ctx, expense.date, expense.paymentTypeId);
+      }
+      if (!nextDueDate) continue; // Can't migrate without due date
+
+      // Use internal mutation to generate payment schedules
+      await ctx.runMutation(internal.internal.expenses.generatePaymentSchedules, {
+        expenseId: expense._id,
+        firstDueDate: nextDueDate,
+        totalAmount: expense.amount,
+        totalInstallments: expense.cuotas,
+        userId: expense.userId,
+        paymentTypeId: expense.paymentTypeId,
+      });
+      migratedCount++;
+    }
+    return { migratedCount };
+  },
+});
