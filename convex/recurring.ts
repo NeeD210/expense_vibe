@@ -26,7 +26,7 @@ export const addRecurringTransaction = mutation({
     description: v.string(),
     amount: v.number(),
     categoryId: v.id("categories"),
-    paymentTypeId: v.id("paymentTypes"),
+    paymentTypeId: v.optional(v.id("paymentTypes")),
     transactionType: v.string(),
     frequency: v.string(),
     startDate: v.number(),
@@ -286,8 +286,8 @@ export const generateTransactionFromRecurring = mutation({
       lastProcessedDate: Date.now(),
     });
 
-    // If this is an installment payment, generate the payment schedules
-    if (recurringTransaction.cuotas > 1) {
+    // If this is an installment payment and has a payment type, generate the payment schedules
+    if (recurringTransaction.cuotas > 1 && recurringTransaction.paymentTypeId) {
       await ctx.runMutation(internal.internal.expenses.generatePaymentSchedules, {
         paymentTypeId: recurringTransaction.paymentTypeId,
         userId: recurringTransaction.userId,

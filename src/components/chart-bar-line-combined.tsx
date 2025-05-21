@@ -49,12 +49,8 @@ export function ChartBarLineCombined({ data, config, title, description }: Chart
               yAxisId="left"
               hide={true}
             />
-            <Tooltip 
-              formatter={(value, name) => {
-                return [`$${Number(value).toFixed(2)}`, name];
-              }}
-            />
-            <Legend />
+            <Tooltip content={<ChartTooltipContent />} />
+            <Legend content={<ChartLegendContent />} />
             
             {/* Stacked Bar for expenses */}
             {categoryKeys.map((key, index) => (

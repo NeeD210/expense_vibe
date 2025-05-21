@@ -40,15 +40,17 @@ export const generateTransactionFromRecurring = internalMutation({
     }
 
     // Get the payment type
-    const paymentType = await ctx.db.get(recurringTransaction.paymentTypeId);
-    if (!paymentType) {
+    const paymentType = recurringTransaction.paymentTypeId ? await ctx.db.get(recurringTransaction.paymentTypeId) : null;
+    if (recurringTransaction.paymentTypeId && !paymentType) {
       throw new Error("Payment type not found");
     }
 
     const transactionDate = args.targetDate ?? Date.now();
 
     // Calculate next due date using the same logic as addExpense
-    const nextDueDate = await calculateNextDueDate(ctx, transactionDate, recurringTransaction.paymentTypeId);
+    const nextDueDate = recurringTransaction.paymentTypeId ? 
+      await calculateNextDueDate(ctx, transactionDate, recurringTransaction.paymentTypeId) : 
+      undefined;
 
     // Create the transaction
     const transactionId = await ctx.db.insert("expenses", {
@@ -72,15 +74,17 @@ export const generateTransactionFromRecurring = internalMutation({
       lastProcessedDate: transactionDate,
     });
 
-    // Generate payment schedules for all recurring transactions
-    await ctx.runMutation(internal.internal.expenses.generatePaymentSchedules, {
-      paymentTypeId: recurringTransaction.paymentTypeId,
-      userId: recurringTransaction.userId,
-      expenseId: transactionId,
-      totalInstallments: recurringTransaction.cuotas,
-      firstDueDate: nextDueDate,
-      totalAmount: recurringTransaction.amount,
-    });
+    // Generate payment schedules if payment type exists
+    if (recurringTransaction.paymentTypeId && nextDueDate) {
+      await ctx.runMutation(internal.internal.expenses.generatePaymentSchedules, {
+        paymentTypeId: recurringTransaction.paymentTypeId,
+        userId: recurringTransaction.userId,
+        expenseId: transactionId,
+        totalInstallments: recurringTransaction.cuotas,
+        firstDueDate: nextDueDate,
+        totalAmount: recurringTransaction.amount,
+      });
+    }
 
     return transactionId;
   },

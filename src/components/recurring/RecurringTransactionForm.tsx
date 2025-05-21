@@ -152,7 +152,7 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
         return;
       }
 
-      if (!paymentTypeId) {
+      if (transactionType === 'expense' && !paymentTypeId) {
         setValidationError('Payment method is required');
         setIsSubmitting(false);
         return;
@@ -162,11 +162,12 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
         description,
         amount: amountValue,
         categoryId: categoryId as Id<'categories'>,
-        paymentTypeId: paymentTypeId as Id<'paymentTypes'>,
+        paymentTypeId: transactionType === 'expense' ? paymentTypeId as Id<'paymentTypes'> : undefined,
         transactionType,
         frequency,
         startDate: startDate.getTime(),
         endDate: endDate?.getTime(),
+        cuotas: 1,
       };
 
       if (editId) {
@@ -335,24 +336,6 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
               </div>
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<'categories'> | '')}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCategories
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(cat => (
-                      <SelectItem key={cat._id} value={cat._id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
             {transactionType === 'expense' && (
               <div className="space-y-2">
                 <Label htmlFor="paymentType">Payment Method</Label>
@@ -383,7 +366,32 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
                 </Select>
               </div>
             )}
-            
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<'categories'> | '')}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredCategories
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map(cat => (
+                      <SelectItem key={cat._id} value={cat._id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter description"
+              />
+            </div>
             <div className="space-y-2">
               <Label>Amount</Label>
               <Input
@@ -392,16 +400,6 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
                 onChange={handleAmountChange}
                 placeholder="$0.00"
                 inputMode="numeric"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter description"
               />
             </div>
             

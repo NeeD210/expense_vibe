@@ -4,14 +4,14 @@ import { SignInForm } from "./SignInForm";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
-import { Home, PieChart, Settings, Plus, List, TrendingDown, TrendingUp, Repeat } from "lucide-react";
+import { Home, PieChart, Settings, Plus, List, TrendingDown, TrendingUp, Repeat, Calendar, AreaChart } from "lucide-react";
 import HomePage from "./pages/HomePage";
-import AnalysisPage from "./pages/AnalysisPage";
 import ConfigPage from "./pages/ConfigPage";
 import AddExpensePage from "./pages/AddExpensePage";
 import AddIncomePage from "./pages/AddIncomePage";
 import ManageTransactionsPage from "./pages/ManageTransactionsPage";
 import TransactionsNavigationPage from "./pages/TransactionsNavigationPage";
+import ProjectionPage from "./pages/ProjectionPage";
 import RecurringTransactionForm from "./components/recurring/RecurringTransactionForm";
 import PerFiLogo from "./img/PerFi_logo.png";
 import PFIBlackLogo from "./img/perfi_logo_dark.png";
@@ -24,7 +24,7 @@ import { useMutation } from "convex/react";
 import { useTheme } from "./context/ThemeContext";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
-type PageType = "home" | "analysis" | "config" | "add" | "income" | "recurring" | "transactions" | "manage";
+type PageType = "home" | "analysis" | "config" | "add" | "income" | "recurring" | "transactions" | "manage" | "projections";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageType>("home");
@@ -52,9 +52,9 @@ export default function App() {
     // Update currentPage based on the current route
     const path = location.pathname;
     if (path === "/") setCurrentPage("home");
-    else if (path === "/analysis") setCurrentPage("analysis");
     else if (path === "/config") setCurrentPage("config");
     else if (path === "/transactions") setCurrentPage("transactions");
+    else if (path === "/projections") setCurrentPage("projections");
   }, [location.pathname]);
 
   useEffect(() => {
@@ -111,13 +111,13 @@ export default function App() {
           <img src={theme === "dark" ? PFIBlackLogo : PerFiLogo} alt="PerFi App Logo" className="h-10" />
           <div className="absolute left-1/2 transform -translate-x-1/2 text-2xl font-bold text-foreground">
             {currentPage === 'home' && 'Home'}
-            {currentPage === 'analysis' && 'Analysis'}
             {currentPage === 'add' && 'Expense'}
             {currentPage === 'income' && 'Income'}
             {currentPage === 'recurring' && 'Recurring Transaction'}
             {currentPage === 'transactions' && 'Transactions'}
             {currentPage === 'config' && 'Settings'}
             {currentPage === 'manage' && 'Manage Transactions'}
+            {currentPage === 'projections' && 'Projections'}
           </div>
         </header>
       </Authenticated>
@@ -126,11 +126,11 @@ export default function App() {
         <Authenticated>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/analysis" element={<AnalysisPage />} />
             <Route path="/config" element={<ConfigPage key={configKey} />} />
             <Route path="/transactions" element={<TransactionsNavigationPage />} />
             <Route path="/transactions/manage" element={<ManageTransactionsPage key={manageKey} />} />
             <Route path="/transactions/recurring" element={<ManageTransactionsPage key={manageKey} />} />
+            <Route path="/projections" element={<ProjectionPage />} />
           </Routes>
           
           {/* Drawer components */}
@@ -177,13 +177,13 @@ export default function App() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/analysis")}
+              onClick={() => navigate("/projections")}
               className={cn(
                 "rounded-full transition-colors",
-                currentPage === 'analysis' ? 'text-primary' : 'text-muted-foreground'
+                currentPage === 'projections' ? 'text-primary' : 'text-muted-foreground'
               )}
             >
-              <PieChart size={24} />
+              <AreaChart size={24} />
             </Button>
             <div className="relative">
               <Button

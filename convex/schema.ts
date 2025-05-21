@@ -54,7 +54,7 @@ export default defineSchema({
     description: v.string(),
     amount: v.number(),
     categoryId: v.id("categories"),
-    paymentTypeId: v.id("paymentTypes"),
+    paymentTypeId: v.optional(v.id("paymentTypes")),
     transactionType: v.string(),
     frequency: v.string(),
     startDate: v.number(),
