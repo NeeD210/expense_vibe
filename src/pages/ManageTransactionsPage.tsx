@@ -95,10 +95,27 @@ export default function ManageTransactionsPage() {
     });
   };
   
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAmountError("");
+    if (editingTransaction) {
+      // Remove any non-digit characters
+      const value = e.target.value.replace(/[^\d]/g, '');
+      setEditingTransaction({ ...editingTransaction, amount: value });
+    }
+  };
+
+  const formatAmount = (amount: number): string => {
+    return amount.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  };
+
+  const parseAmount = (value: string): number => {
+    return parseInt(value.replace(/,/g, '')) || 0;
+  };
+
   const handleSaveEdit = async () => {
     if (!editingTransaction) return;
     
-    const amount = parseFloat(editingTransaction.amount);
+    const amount = parseAmount(editingTransaction.amount);
     if (isNaN(amount) || amount <= 0) {
       setAmountError("Please enter a valid amount");
       return;
@@ -152,13 +169,6 @@ export default function ManageTransactionsPage() {
     }
   };
   
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAmountError("");
-    if (editingTransaction) {
-      setEditingTransaction({ ...editingTransaction, amount: e.target.value });
-    }
-  };
-
   const getPaymentTypeName = (paymentTypeId: Id<"paymentTypes"> | undefined) => {
     if (!paymentTypeId) return "";
     const paymentType = paymentTypes.find(pt => pt._id === paymentTypeId);
@@ -366,11 +376,11 @@ export default function ManageTransactionsPage() {
                             <div className="flex justify-between items-center">
                               <Label>Amount</Label>
                               <Input
-                                type="number"
-                                step="0.01"
-                                value={editingTransaction.amount}
+                                type="text"
+                                value={editingTransaction.amount.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                 onChange={handleAmountChange}
                                 className="max-w-[200px]"
+                                inputMode="numeric"
                               />
                             </div>
                             
@@ -438,7 +448,7 @@ export default function ManageTransactionsPage() {
                                 transaction.transactionType === "expense" ? "text-red-500" : "text-green-500"
                               )}>
                                 {transaction.transactionType === "expense" ? "-" : "+"} 
-                                ${transaction.amount.toFixed(2)}
+                                ${formatAmount(transaction.amount)}
                               </div>
                               <div className="flex gap-1 mt-1">
                                 {transaction.verified === false && (
