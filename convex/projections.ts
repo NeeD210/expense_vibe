@@ -38,9 +38,9 @@ export const getProjectedPayments = query({
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     const dateRangeStart = startOfMonth.getTime();
-    // Calculate the end of the 12th month (start of month + 12 months - 1 ms)
-    const endOf12thMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 12, 0, 23, 59, 59, 999);
-    const dateRangeEnd = endOf12thMonth.getTime();
+    // Calculate the end of the 4th month (start of month + 4 months - 1 ms)
+    const endOf4thMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 4, 0, 23, 59, 59, 999);
+    const dateRangeEnd = endOf4thMonth.getTime();
 
     console.log("[Projections] Input:", { 
       userId, 

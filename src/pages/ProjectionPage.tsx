@@ -89,12 +89,15 @@ export default function ProjectionPage() {
   // Transform data for the chart
   const monthKeys = Object.keys(monthlyData).sort();
   const barChartData = monthKeys.map(month => {
+    const installment = monthlyData[month].installment;
+    const recurring = monthlyData[month].recurring;
+    const income = monthlyData[month].income;
     return {
       month: format(new Date(month + "-01"), 'MMM yyyy'),
-      installment: monthlyData[month].installment,
-      recurring: monthlyData[month].recurring,
-      total: monthlyData[month].installment + monthlyData[month].recurring,
-      income: monthlyData[month].income,
+      installment,
+      recurring,
+      total: installment + recurring,
+      income,
     };
   });
 
@@ -119,36 +122,36 @@ export default function ProjectionPage() {
       <h1 className="text-2xl font-bold mb-4">Financial Projections</h1>
 
       {/* 1. Summary Cards */}
-      <div className="flex flex-row flex-wrap gap-4 mb-4 w-full justify-between items-stretch">
-        <Card className="flex-1 min-w-[140px] max-w-[300px] flex flex-col">
+      <div className="flex flex-col sm:flex-row gap-4 mb-4 w-full">
+        <Card className="w-full sm:flex-1">
           <CardHeader>
             <CardTitle className="text-base md:text-lg lg:text-xl xl:text-2xl">Total Expenses</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="font-bold text-red-500 text-xl sm:text-2xl md:text-3xl lg:text-3xl xl:text-3xl">
-              ${Math.round(totalExpenses)}
+              ${Math.round(totalExpenses).toLocaleString()}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="flex-1 min-w-[140px] max-w-[300px] flex flex-col">
+        <Card className="w-full sm:flex-1">
           <CardHeader>
             <CardTitle className="text-base md:text-lg lg:text-xl xl:text-2xl">Total Income</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="font-bold text-green-500 text-xl sm:text-2xl md:text-3xl lg:text-3xl xl:text-3xl">
-              ${Math.round(totalIncome)}
+              ${Math.round(totalIncome).toLocaleString()}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="flex-1 min-w-[140px] max-w-[300px] flex flex-col">
+        <Card className="w-full sm:flex-1">
           <CardHeader>
             <CardTitle className="text-base md:text-lg lg:text-xl xl:text-2xl">Net Flow</CardTitle>
           </CardHeader>
           <CardContent>
             <p className={`font-bold ${netFlow >= 0 ? "text-green-500" : "text-red-500"} text-xl sm:text-2xl md:text-3xl lg:text-3xl xl:text-3xl`}>
-              ${Math.round(netFlow)}
+              ${Math.round(netFlow).toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -196,7 +199,7 @@ export default function ProjectionPage() {
                       : "text-green-500"
                   }`}
                 >
-                  ${Math.round(item.amount)}
+                  ${Math.round(item.amount).toLocaleString()}
                 </p>
               </div>
             ))}

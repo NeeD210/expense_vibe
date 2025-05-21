@@ -122,6 +122,7 @@ export const updateRecurringTransaction = mutation({
     endDate: v.optional(v.number()),
     nextDueDateCalculationDay: v.optional(v.number()),
     isActive: v.optional(v.boolean()),
+    cuotas: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUserId(ctx);

@@ -27,6 +27,7 @@ interface EditingTransaction {
   description: string;
   amount: string;
   cuotas: number;
+  transactionType: 'expense' | 'income';
 }
 
 export default function ManageTransactionsPage() {
@@ -90,6 +91,7 @@ export default function ManageTransactionsPage() {
       description: transaction.description,
       amount: transaction.amount.toString(),
       cuotas: transaction.cuotas,
+      transactionType: transaction.transactionType,
     });
   };
   
@@ -102,7 +104,7 @@ export default function ManageTransactionsPage() {
       return;
     }
     
-    if (!editingTransaction.paymentTypeId) {
+    if (editingTransaction.transactionType === 'expense' && !editingTransaction.paymentTypeId) {
       setAmountError("Please select a payment type");
       return;
     }
@@ -301,27 +303,29 @@ export default function ManageTransactionsPage() {
                               />
                             </div>
                             
-                            <div className="flex justify-between items-center">
-                              <Label>Payment Type</Label>
-                              <Select
-                                value={editingTransaction.paymentTypeId?.toString() || ""}
-                                onValueChange={(value) => setEditingTransaction({
-                                  ...editingTransaction,
-                                  paymentTypeId: value as Id<"paymentTypes">,
-                                })}
-                              >
-                                <SelectTrigger className="max-w-[200px]">
-                                  <SelectValue placeholder="Select payment type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {paymentTypes.map((pt) => (
-                                    <SelectItem key={pt._id as string} value={pt._id as string}>
-                                      {pt.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                            {transaction.transactionType === 'expense' && (
+                              <div className="flex justify-between items-center">
+                                <Label>Payment Type</Label>
+                                <Select
+                                  value={editingTransaction.paymentTypeId?.toString() || ""}
+                                  onValueChange={(value) => setEditingTransaction({
+                                    ...editingTransaction,
+                                    paymentTypeId: value as Id<"paymentTypes">,
+                                  })}
+                                >
+                                  <SelectTrigger className="max-w-[200px]">
+                                    <SelectValue placeholder="Select payment type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {paymentTypes.map((pt) => (
+                                      <SelectItem key={pt._id as string} value={pt._id as string}>
+                                        {pt.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                             
                             <div className="flex justify-between items-center">
                               <Label>Category</Label>

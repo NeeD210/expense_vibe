@@ -66,7 +66,7 @@ export function ChartBarLineCombined({ data, config, title, description }: Chart
                   <LabelList
                     dataKey="total"
                     position="top"
-                    formatter={(value: number) => `$${value.toFixed(0)}`}
+                    formatter={(value: number) => `$${Math.round(value).toLocaleString()}`}
                     offset={10}
                     className="fill-foreground"
                     fontSize={12}
@@ -89,7 +89,7 @@ export function ChartBarLineCombined({ data, config, title, description }: Chart
               <LabelList
                 dataKey="income"
                 position="top"
-                formatter={(value: number) => value > 0 ? `$${value.toFixed(0)}` : ''}
+                formatter={(value: number) => value > 0 ? `$${Math.round(value).toLocaleString()}` : ''}
                 offset={12}
                 className="fill-green-600"
                 fontSize={12}

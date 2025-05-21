@@ -153,7 +153,7 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
       }
 
       if (transactionType === 'expense' && !paymentTypeId) {
-        setValidationError('Payment method is required');
+        setValidationError('Payment method is required for expenses');
         setIsSubmitting(false);
         return;
       }
