@@ -519,6 +519,12 @@ export const deleteExpense = mutation({
     if (!expense) throw new Error("Expense not found");
     if (expense.userId !== userId) throw new Error("Not authorized");
     
+    // Delete associated payment schedules
+    await ctx.runMutation(internal.internal.expenses.deletePaymentSchedulesForExpense, {
+      expenseId: args.id,
+    });
+    
+    // Soft delete the expense
     await ctx.db.patch(args.id, { 
       softdelete: true,
       deletedAt: Date.now()

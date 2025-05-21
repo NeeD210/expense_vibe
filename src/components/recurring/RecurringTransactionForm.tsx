@@ -48,7 +48,8 @@ interface RecurringTransactionFormProps {
 
 const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransactionFormProps) => {
   const { toast } = useToast();
-  const categories = useQuery(api.expenses.getCategoriesWithIds) || [];
+  const categoriesQuery = useQuery(api.expenses.getCategoriesWithIds);
+  const categories = categoriesQuery || [];
   const paymentTypes = useQuery(api.expenses.getPaymentTypes) || [];
   const recurringTransaction = editId 
     ? useQuery(api.recurring.listRecurringTransactions)?.find(t => t._id === editId)
@@ -70,6 +71,7 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
   const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
   // Load data if editing
   useEffect(() => {
@@ -94,6 +96,12 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
       setEndDate(undefined);
     }
   }, [recurringTransaction]);
+
+  useEffect(() => {
+    if (categoriesQuery !== undefined) {
+      setIsLoadingCategories(false);
+    }
+  }, [categoriesQuery]);
 
   const formatAmount = (value: number | string): string => {
     if (typeof value === 'number') {
@@ -368,18 +376,24 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<'categories'> | '')}>
+                  <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<'categories'> | '')} disabled={isLoadingCategories || filteredCategories.length === 0}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder={isLoadingCategories ? "Loading categories..." : "Select category"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredCategories
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map(cat => (
-                          <SelectItem key={cat._id} value={cat._id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
+                      {isLoadingCategories ? (
+                        <SelectItem value="loading" disabled>Loading...</SelectItem>
+                      ) : filteredCategories.length === 0 ? (
+                        <SelectItem value="no-categories" disabled>No categories found. Please ensure you are logged in and have categories configured.</SelectItem>
+                      ) : (
+                        filteredCategories
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map(cat => (
+                            <SelectItem key={cat._id} value={cat._id}>
+                              {cat.name}
+                            </SelectItem>
+                          ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
