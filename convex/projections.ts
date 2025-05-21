@@ -120,28 +120,28 @@ export const getProjectedPayments = query({
     console.log(`[Projections] installmentItems count: ${installmentItems.length}`);
 
     // Get all recurring transactions for this user
-    const recurringTransactions = await ctx.db
+    const allRecurringTransactions = await ctx.db
       .query("recurringTransactions")
       .withIndex("by_user_isActive_startDate", (q) =>
         q.eq("userId", userId).eq("isActive", true)
       )
-      .filter((q) => 
-        q.eq(q.field("softdelete"), false) &&
-        q.lte(q.field("startDate"), dateRangeEnd)
-      )
       .collect();
-    console.log(`[Projections] recurringTransactions count: ${recurringTransactions.length}`);
+    
+    console.log(`[Projections] All recurring transactions before softdelete filter: ${allRecurringTransactions.length}`);
+    
+    // Debug why some transactions might be filtered out
+    for (const rt of allRecurringTransactions) {
+      if (rt.softdelete) {
+        console.log(`[Projections] Recurring transaction ${rt._id} filtered out: softdeleted`);
+      }
+    }
+
+    const recurringTransactions = allRecurringTransactions.filter(rt => !rt.softdelete && rt.startDate <= dateRangeEnd);
+    console.log(`[Projections] recurringTransactions count after filters: ${recurringTransactions.length}`);
 
     // Simulate future occurrences for each recurring transaction
     const recurringItems: ProjectionItem[] = [];
     for (const rt of recurringTransactions) {
-      console.log(`[Projections] Processing recurring transaction: ${rt._id}`, {
-        startDate: new Date(rt.startDate).toISOString(),
-        dateRangeStart: new Date(dateRangeStart).toISOString(),
-        dateRangeEnd: new Date(dateRangeEnd).toISOString(),
-        lastProcessed: rt.lastProcessedDate ? new Date(rt.lastProcessedDate).toISOString() : 'none'
-      });
-      
       // Initialize the current date based on the start date of the recurring transaction
       let currentDate = rt.startDate;
       
