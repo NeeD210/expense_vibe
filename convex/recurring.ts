@@ -40,8 +40,8 @@ export const addRecurringTransaction = mutation({
     if (!userId) throw new Error("Not authenticated");
 
     // Validate frequency
-    if (!["daily", "weekly", "monthly", "yearly"].includes(args.frequency)) {
-      throw new Error("Invalid frequency. Must be daily, weekly, monthly, or yearly.");
+    if (!["daily", "weekly", "monthly", "semestrally", "yearly"].includes(args.frequency)) {
+      throw new Error("Invalid frequency. Must be daily, weekly, monthly, semestrally, or yearly.");
     }
 
     // Validate transaction type
@@ -97,6 +97,9 @@ export const addRecurringTransaction = mutation({
         case "monthly":
           nextDate.setMonth(nextDate.getMonth() + 1);
           break;
+        case "semestrally":
+          nextDate.setMonth(nextDate.getMonth() + 6);
+          break;
         case "yearly":
           nextDate.setFullYear(nextDate.getFullYear() + 1);
           break;
@@ -135,8 +138,8 @@ export const updateRecurringTransaction = mutation({
     }
 
     // Validate frequency if provided
-    if (args.frequency && !["daily", "weekly", "monthly", "yearly"].includes(args.frequency)) {
-      throw new Error("Invalid frequency. Must be daily, weekly, monthly, or yearly.");
+    if (args.frequency && !["daily", "weekly", "monthly", "semestrally", "yearly"].includes(args.frequency)) {
+      throw new Error("Invalid frequency. Must be daily, weekly, monthly, semestrally, or yearly.");
     }
 
     // Validate transaction type if provided
@@ -226,6 +229,8 @@ function determineLastProcessingThreshold(frequency: string, currentTimestamp: n
       return new Date(now.setDate(now.getDate() - 7)).getTime();
     case "monthly":
       return new Date(now.setMonth(now.getMonth() - 1)).getTime();
+    case "semestrally":
+      return new Date(now.setMonth(now.getMonth() - 6)).getTime();
     case "yearly":
       return new Date(now.setFullYear(now.getFullYear() - 1)).getTime();
     default:

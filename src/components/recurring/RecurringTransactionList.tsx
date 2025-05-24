@@ -74,11 +74,11 @@ const RecurringTransactionList: React.FC = () => {
   };
 
   // Helper function to get payment type name
-  const getPaymentTypeName = (paymentTypeId: Id<'paymentTypes'>) => {
+  const getPaymentTypeName = (paymentTypeId: Id<'paymentTypes'> | undefined) => {
     const paymentType = paymentTypes.find(p => p._id === paymentTypeId);
     return paymentType ? paymentType.name : 'Unknown';
   };
-  
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">

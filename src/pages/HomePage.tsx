@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ExpenseDonutChart } from "@/components/chart-pie-donut-text";
 import { ChartBarLineCombined } from "@/components/chart-bar-line-combined";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartDataLabels, LineElement, PointElement, SubTitle);
 
@@ -184,40 +185,85 @@ export default function HomePage() {
         </Button>
       </div>
 
+      {/* Transaction List Grouped by Date with Accordion */}
       <div className="flex flex-col gap-2 mt-4">
-        {[...allTransactions]
-          .sort((a, b) => {
-            const dateA = typeof a.date === 'string' ? parseISO(a.date) : new Date(a.date);
-            const dateB = typeof b.date === 'string' ? parseISO(b.date) : new Date(b.date);
-            return dateB.getTime() - dateA.getTime();
-          })
-          .map(transaction => (
-          <Card key={transaction._id}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium text-foreground">{getCategoryName(transaction.categoryId)}</div>
-                  <div className="text-sm text-muted-foreground">{transaction.description}</div>
-                  <div className="text-xs text-muted-foreground/70">
-                    {format(typeof transaction.date === 'string' ? parseISO(transaction.date) : new Date(transaction.date), 'MMM d, yyyy')}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className={cn(
-                    "font-medium",
-                    transaction.transactionType === 'income' ? 'text-green-600' : 'text-foreground'
-                  )}>
-                    {transaction.transactionType === 'income' ? '+' : ''}${Math.round(transaction.amount).toLocaleString()}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {transaction.transactionType === 'expense' && getPaymentTypeName(transaction.paymentTypeId)}
-                    {transaction.cuotas && transaction.cuotas > 1 && ` - ${transaction.cuotas} cuota${transaction.cuotas > 1 ? 's' : ''}`}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {(() => {
+          // Group transactions by date (yyyy-MM-dd)
+          const grouped: Record<string, typeof allTransactions> = {};
+          [...allTransactions].forEach(tx => {
+            const dateObj = typeof tx.date === 'string' ? parseISO(tx.date) : new Date(tx.date);
+            const key = format(dateObj, 'yyyy-MM-dd');
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(tx);
+          });
+          // Sort dates descending
+          const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+          return (
+            <Accordion type="multiple" className="w-full">
+              {sortedDates.map(dateKey => {
+                const transactions = grouped[dateKey];
+                const numTransactions = transactions.length;
+                const balance = transactions.reduce((sum, tx) => sum + (tx.transactionType === 'income' ? tx.amount : -tx.amount), 0);
+                return (
+                  <AccordionItem value={dateKey} key={dateKey}>
+                    <AccordionTrigger>
+                      <div className="flex w-full items-center justify-between text-base font-semibold">
+                        <span>{format(parseISO(dateKey), 'dd-MMM')}</span>
+                        <span className="flex items-center gap-2">
+                          <span>
+                            Amount: <span className={cn(
+                              'font-semibold',
+                              balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : 'text-foreground'
+                            )}>
+                              {balance > 0 ? '+' : ''}${Math.round(balance).toLocaleString()}
+                            </span>
+                          </span>
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="flex flex-col gap-2">
+                        {transactions
+                          .sort((a, b) => {
+                            const dateA = typeof a.date === 'string' ? parseISO(a.date) : new Date(a.date);
+                            const dateB = typeof b.date === 'string' ? parseISO(b.date) : new Date(b.date);
+                            return dateB.getTime() - dateA.getTime();
+                          })
+                          .map(transaction => (
+                            <Card key={transaction._id}>
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="font-medium text-foreground">{getCategoryName(transaction.categoryId)}</div>
+                                    <div className="text-sm text-muted-foreground">{transaction.description}</div>
+                                    <div className="text-xs text-muted-foreground/70">
+                                      {format(typeof transaction.date === 'string' ? parseISO(transaction.date) : new Date(transaction.date), 'MMM d, yyyy')}
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className={cn(
+                                      "font-medium",
+                                      transaction.transactionType === 'income' ? 'text-green-600' : 'text-foreground'
+                                    )}>
+                                      {transaction.transactionType === 'income' ? '+' : ''}${Math.round(transaction.amount).toLocaleString()}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {transaction.transactionType === 'expense' && getPaymentTypeName(transaction.paymentTypeId)}
+                                      {transaction.cuotas && transaction.cuotas > 1 && ` - ${transaction.cuotas} cuota${transaction.cuotas > 1 ? 's' : ''}`}
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          );
+        })()}
       </div>
     </div>
   );

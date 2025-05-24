@@ -75,17 +75,17 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
 
   // Load data if editing
   useEffect(() => {
-    if (recurringTransaction) {
+    if (recurringTransaction && categories.length > 0) {
       setDescription(recurringTransaction.description);
       setAmount(formatAmount(recurringTransaction.amount));
-      setCategoryId(recurringTransaction.categoryId as string);
-      setPaymentTypeId(recurringTransaction.paymentTypeId as string);
+      setCategoryId(recurringTransaction.categoryId);
+      const foundPaymentType = paymentTypes.find(pt => pt._id === recurringTransaction.paymentTypeId);
+      setPaymentTypeId(foundPaymentType ? String(recurringTransaction.paymentTypeId) : '');
       setTransactionType(recurringTransaction.transactionType as 'expense' | 'income');
       setFrequency(recurringTransaction.frequency as string);
       setStartDate(new Date(recurringTransaction.startDate));
       setEndDate(recurringTransaction.endDate ? new Date(recurringTransaction.endDate) : undefined);
-    } else {
-      // Reset form for new transaction
+    } else if (!recurringTransaction && !editId) {
       setDescription('');
       setAmount('');
       setCategoryId('');
@@ -95,13 +95,21 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
       setStartDate(new Date());
       setEndDate(undefined);
     }
-  }, [recurringTransaction]);
+  }, [recurringTransaction, categories, paymentTypes, editId]);
 
   useEffect(() => {
     if (categoriesQuery !== undefined) {
       setIsLoadingCategories(false);
     }
   }, [categoriesQuery]);
+
+  const filteredCategories = categories.filter(cat => {
+    return (
+      !cat.transactionType ||
+      cat.transactionType === transactionType ||
+      cat._id === categoryId // Always include the selected category
+    );
+  });
 
   const formatAmount = (value: number | string): string => {
     if (typeof value === 'number') {
@@ -208,9 +216,10 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
     }
   };
 
-  const filteredCategories = categories.filter(cat => 
-    !transactionType || !cat.transactionType || cat.transactionType === transactionType
-  );
+  // Add loading state before rendering the form
+  if (editId && (!recurringTransaction || !categoryId)) {
+    return <div className="p-4 text-center">Loading...</div>;
+  }
 
   return (
     <Drawer open={true} onOpenChange={onOpenChange}>
@@ -334,9 +343,8 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
                     <SelectContent>
                       <SelectItem value="daily">Daily</SelectItem>
                       <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="biweekly">Bi-weekly</SelectItem>
                       <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="semestrally">Semestrally</SelectItem>
                       <SelectItem value="yearly">Yearly</SelectItem>
                     </SelectContent>
                   </Select>
@@ -376,7 +384,11 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<'categories'> | '')} disabled={isLoadingCategories || filteredCategories.length === 0}>
+                  <Select
+                    value={categoryId ? String(categoryId) : ''}
+                    onValueChange={value => setCategoryId(String(value))}
+                    disabled={isLoadingCategories || filteredCategories.length === 0}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder={isLoadingCategories ? "Loading categories..." : "Select category"} />
                     </SelectTrigger>
@@ -389,7 +401,7 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
                         filteredCategories
                           .sort((a, b) => a.name.localeCompare(b.name))
                           .map(cat => (
-                            <SelectItem key={cat._id} value={cat._id}>
+                            <SelectItem key={String(cat._id)} value={String(cat._id)}>
                               {cat.name}
                             </SelectItem>
                           ))

@@ -197,6 +197,9 @@ function getNextDate(currentDate: number, frequency: string): number {
     case "monthly":
       date.setMonth(date.getMonth() + 1);
       break;
+    case "semestrally":
+      date.setMonth(date.getMonth() + 6);
+      break;
     case "yearly":
       date.setFullYear(date.getFullYear() + 1);
       break;

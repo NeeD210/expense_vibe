@@ -14,6 +14,7 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { ChartBarLineCombined } from "@/components/chart-bar-line-combined";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 interface ProjectionItem {
   date: number;
@@ -64,7 +65,7 @@ export default function ProjectionPage() {
 
   // Prepare data for bar+line chart
   // Group by month for the chart
-  const monthlyData: Record<string, { [key in 'installment' | 'recurring' | 'income']: number }> = {};
+  const monthlyData: Record<string, { [key in 'credit' | 'expense' | 'income']: number }> = {};
   
   projections.forEach((item) => {
     const date = new Date(item.date);
@@ -72,43 +73,46 @@ export default function ProjectionPage() {
     
     if (!monthlyData[monthKey]) {
       monthlyData[monthKey] = {
-        installment: 0,
-        recurring: 0,
+        credit: 0,
+        expense: 0,
         income: 0
       };
     }
     
-    if (item.transactionType === 'expense') {
-      // Group by the type (installment or recurring) instead of category
-      monthlyData[monthKey][item.type] += item.amount;
-    } else if (item.transactionType === 'income') {
-      monthlyData[monthKey].income += item.amount;
+    if (item.type === 'installment') {
+      monthlyData[monthKey].credit += item.amount;
+    } else if (item.type === 'recurring') {
+      if (item.transactionType === 'expense') {
+        monthlyData[monthKey].expense += item.amount;
+      } else if (item.transactionType === 'income') {
+        monthlyData[monthKey].income += item.amount;
+      }
     }
   });
 
   // Transform data for the chart
   const monthKeys = Object.keys(monthlyData).sort();
   const barChartData = monthKeys.map(month => {
-    const installment = monthlyData[month].installment;
-    const recurring = monthlyData[month].recurring;
+    const credit = monthlyData[month].credit;
+    const expense = monthlyData[month].expense;
     const income = monthlyData[month].income;
     return {
       month: format(new Date(month + "-01"), 'MMM yyyy'),
-      installment,
-      recurring,
-      total: installment + recurring,
+      credit,
+      expense,
       income,
+      total: credit + expense,
     };
   });
 
   // Create chart config
   const chartConfig = {
-    installment: {
-      label: "Scheduled Payments",
+    credit: {
+      label: "Credit",
       color: typeColors.installment,
     },
-    recurring: {
-      label: "Recurring Expenses",
+    expense: {
+      label: "Expense",
       color: typeColors.recurring,
     },
     income: {
@@ -174,36 +178,148 @@ export default function ProjectionPage() {
       {/* 3. List View */}
       <Card>
         <CardContent className="pt-6">
-          <div className="space-y-4">
-            {projections.map((item, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-4 border rounded-lg"
-              >
-                <div>
-                  <p className="font-medium">{item.description}</p>
-                  <p className="text-sm text-gray-500">
-                    {format(new Date(item.date), "PPP")}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Category: {getCategoryName(item.categoryId)}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Type: {item.type} ({item.transactionType})
-                  </p>
-                </div>
-                <p
-                  className={`font-bold ${
-                    item.transactionType === "expense"
-                      ? "text-red-500"
-                      : "text-green-500"
-                  }`}
-                >
-                  ${Math.round(item.amount).toLocaleString()}
-                </p>
-              </div>
-            ))}
-          </div>
+          {(() => {
+            // Group projections by month (yyyy-MM)
+            const grouped: Record<string, typeof projections> = {};
+            projections.forEach(item => {
+              const date = new Date(item.date);
+              const key = format(date, 'yyyy-MM');
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(item);
+            });
+            const sortedMonths = Object.keys(grouped).sort((a, b) => new Date(b + '-01').getTime() - new Date(a + '-1').getTime());
+            return (
+              <Accordion type="multiple" className="w-full">
+                {sortedMonths.map(monthKey => {
+                  const items = grouped[monthKey];
+                  const monthLabel = format(new Date(monthKey + '-01'), 'MMM yyyy');
+                  const balance = items.reduce((sum, item) => sum + (item.transactionType === 'income' ? item.amount : -item.amount), 0);
+                  return (
+                    <AccordionItem value={monthKey} key={monthKey}>
+                      <AccordionTrigger>
+                        <div className="flex w-full items-center justify-between text-base font-semibold">
+                          <span>{monthLabel}</span>
+                          <span className="flex items-center gap-2">
+                            <span>
+                              Amount: <span className={
+                                balance > 0 ? 'text-green-600 font-semibold' : balance < 0 ? 'text-red-600 font-semibold' : 'font-semibold text-foreground'
+                              }>
+                                {balance > 0 ? '+' : ''}${Math.round(balance).toLocaleString()}
+                              </span>
+                            </span>
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-4">
+                          <Accordion type="multiple" className="w-full">
+                            {/* Credit: type: 'installment' */}
+                            {(() => {
+                              const creditItems = items.filter(item => item.type === 'installment');
+                              const creditTotal = creditItems.reduce((sum, item) => sum + item.amount, 0);
+                              return (
+                                <AccordionItem value="credit">
+                                  <AccordionTrigger>
+                                    <div className="flex w-full items-center justify-between text-base font-semibold">
+                                      <span>Credit</span>
+                                      <span className={
+                                        creditTotal > 0 ? 'text-red-600 font-semibold' : creditTotal < 0 ? 'text-green-600 font-semibold' : 'font-semibold text-foreground'
+                                      }>
+                                        ${Math.round(creditTotal).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                    <div className="space-y-4">
+                                      {creditItems.length === 0 ? <div className="text-muted-foreground">No credit transactions</div> : creditItems.sort((a, b) => b.date - a.date).map((item, index) => (
+                                        <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                                          <div>
+                                            <p className="font-medium">{item.description}</p>
+                                            <p className="text-sm text-gray-500">{format(new Date(item.date), "PPP")}</p>
+                                            <p className="text-sm text-gray-500">Category: {getCategoryName(item.categoryId)}</p>
+                                            <p className="text-sm text-gray-500">Type: {item.type} ({item.transactionType})</p>
+                                          </div>
+                                          <p className="font-bold text-red-500">${Math.round(item.amount).toLocaleString()}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              );
+                            })()}
+                            {/* Expense: type: 'recurring', transactionType: 'expense' */}
+                            {(() => {
+                              const expenseItems = items.filter(item => item.type === 'recurring' && item.transactionType === 'expense');
+                              const expenseTotal = expenseItems.reduce((sum, item) => sum + item.amount, 0);
+                              return (
+                                <AccordionItem value="expense">
+                                  <AccordionTrigger>
+                                    <div className="flex w-full items-center justify-between text-base font-semibold">
+                                      <span>Expense</span>
+                                      <span className="text-red-600 font-semibold">
+                                        -${Math.round(expenseTotal).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                    <div className="space-y-4">
+                                      {expenseItems.length === 0 ? <div className="text-muted-foreground">No expense transactions</div> : expenseItems.sort((a, b) => b.date - a.date).map((item, index) => (
+                                        <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                                          <div>
+                                            <p className="font-medium">{item.description}</p>
+                                            <p className="text-sm text-gray-500">{format(new Date(item.date), "PPP")}</p>
+                                            <p className="text-sm text-gray-500">Category: {getCategoryName(item.categoryId)}</p>
+                                            <p className="text-sm text-gray-500">Type: {item.type} ({item.transactionType})</p>
+                                          </div>
+                                          <p className="font-bold text-red-500">-${Math.round(item.amount).toLocaleString()}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              );
+                            })()}
+                            {/* Income: type: 'recurring', transactionType: 'income' */}
+                            {(() => {
+                              const incomeItems = items.filter(item => item.type === 'recurring' && item.transactionType === 'income');
+                              const incomeTotal = incomeItems.reduce((sum, item) => sum + item.amount, 0);
+                              return (
+                                <AccordionItem value="income">
+                                  <AccordionTrigger>
+                                    <div className="flex w-full items-center justify-between text-base font-semibold">
+                                      <span>Income</span>
+                                      <span className="text-green-600 font-semibold">
+                                        +${Math.round(incomeTotal).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                    <div className="space-y-4">
+                                      {incomeItems.length === 0 ? <div className="text-muted-foreground">No income transactions</div> : incomeItems.sort((a, b) => b.date - a.date).map((item, index) => (
+                                        <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                                          <div>
+                                            <p className="font-medium">{item.description}</p>
+                                            <p className="text-sm text-gray-500">{format(new Date(item.date), "PPP")}</p>
+                                            <p className="text-sm text-gray-500">Category: {getCategoryName(item.categoryId)}</p>
+                                            <p className="text-sm text-gray-500">Type: {item.type} ({item.transactionType})</p>
+                                          </div>
+                                          <p className="font-bold text-green-500">+${Math.round(item.amount).toLocaleString()}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              );
+                            })()}
+                          </Accordion>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>
