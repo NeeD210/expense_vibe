@@ -28,6 +28,12 @@ interface ProjectionItem {
   transactionType?: string;
 }
 
+// Type for the Convex query result
+type ProjectionsResult = ProjectionItem[] | {
+  page?: ProjectionItem[];
+  items?: ProjectionItem[];
+};
+
 // Colors for the different transaction types
 const typeColors = {
   installment: '#C554C4', // Scheduled Payments (bright magenta/violet)
@@ -38,8 +44,7 @@ const typeColors = {
 export default function ProjectionPage() {
   const { user } = useAuth0();
 
-  const projections = useQuery(api.projections.getProjectedPayments, {});
-
+  const projectionsResult = useQuery(api.projections.getProjectedPayments, {}) as ProjectionsResult;
   const categories = useQuery(api.expenses.getCategoriesWithIdsIncludingDeleted) ?? [];
 
   // Helper to get category name from id
@@ -48,8 +53,61 @@ export default function ProjectionPage() {
     return cat ? cat.name : categoryId;
   };
 
-  if (!projections) {
-    return <div>Loading...</div>;
+  // Show loading state while data is being fetched
+  if (!projectionsResult || !categories) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-muted-foreground">Loading projections...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Debug logging
+  console.log("Projections result:", projectionsResult);
+  console.log("Categories data:", categories);
+
+  // Extract the array from the result
+  const projections = Array.isArray(projectionsResult) ? projectionsResult : 
+    (projectionsResult.page || projectionsResult.items || []);
+
+  // Ensure we have valid projections data
+  if (!Array.isArray(projections) || projections.length === 0) {
+    console.error("Invalid projections data:", projectionsResult);
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-red-500">
+            Error: No projection data available
+            <div className="text-sm mt-2">
+              {!Array.isArray(projections) ? 
+                `Expected array, got ${typeof projectionsResult}` : 
+                "No projection items found"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Validate each projection item has required fields
+  const invalidItems = projections.filter(item => {
+    return !item.date || !item.amount || !item.description || !item.type || !item.categoryId;
+  });
+
+  if (invalidItems.length > 0) {
+    console.error("Invalid projection items:", invalidItems);
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-red-500">
+            Error: Invalid projection items found
+            <div className="text-sm mt-2">Found {invalidItems.length} items with missing required fields</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Calculate summary statistics

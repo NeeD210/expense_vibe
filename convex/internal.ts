@@ -62,7 +62,7 @@ export const generateTransactionFromRecurring = internalMutation({
       paymentTypeId: recurringTransaction.paymentTypeId,
       transactionType: recurringTransaction.transactionType,
       date: transactionDate,
-      cuotas: recurringTransaction.cuotas,
+      cuotas: recurringTransaction.cuotas ?? 1,
       verified: false,
       recurringTransactionId: args.recurringTransactionId,
       softdelete: false,
@@ -80,7 +80,7 @@ export const generateTransactionFromRecurring = internalMutation({
         paymentTypeId: recurringTransaction.paymentTypeId,
         userId: recurringTransaction.userId,
         expenseId: transactionId,
-        totalInstallments: recurringTransaction.cuotas,
+        totalInstallments: recurringTransaction.cuotas ?? 1,
         firstDueDate: nextDueDate,
         totalAmount: recurringTransaction.amount,
       });
