@@ -85,35 +85,19 @@ export const getProjectedPayments = query({
     paymentTypeId: v.optional(v.id("paymentTypes")),
     transactionType: v.optional(v.string()),
   })),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    // Generate cache key with date range
+    // Generate date range for projections
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     const dateRangeStart = startOfMonth.getTime();
     const endOf4thMonth = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth() + 4, 0, 23, 59, 59, 999);
     const dateRangeEnd = endOf4thMonth.getTime();
 
-    const cacheKey = cache.generateCacheKey(
-      CACHE_KEYS.PROJECTED_PAYMENTS,
-      userId,
-      { dateRangeStart, dateRangeEnd }
-    );
-
-    // Try to get from cache first
-    const cachedData = cache.getCachedData<ProjectionItem[]>(cacheKey);
-    if (cachedData !== null) {
-      return cachedData;
-    }
-
-    // If not in cache, calculate projections
+    // Calculate all projections (no pagination)
     const allItems = await calculateProjections(ctx, userId, dateRangeStart, dateRangeEnd);
-
-    // Cache the results
-    cache.setCachedData(cacheKey, allItems, CACHE_DURATION.SHORT);
-
     return allItems;
   },
 });

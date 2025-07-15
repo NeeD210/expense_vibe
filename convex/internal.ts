@@ -66,7 +66,6 @@ export const generateTransactionFromRecurring = internalMutation({
       verified: false,
       recurringTransactionId: args.recurringTransactionId,
       softdelete: false,
-      nextDueDate,
     });
 
     // Update the last processed date

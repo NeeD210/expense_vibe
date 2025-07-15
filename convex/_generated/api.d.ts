@@ -26,6 +26,7 @@ import type * as migrations_category from "../migrations/category.js";
 import type * as migrations_expenseCategory from "../migrations/expenseCategory.js";
 import type * as migrations_index from "../migrations/index.js";
 import type * as migrations_run from "../migrations/run.js";
+import type * as migrations from "../migrations.js";
 import type * as projections from "../projections.js";
 import type * as recurring from "../recurring.js";
 
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/expenseCategory": typeof migrations_expenseCategory;
   "migrations/index": typeof migrations_index;
   "migrations/run": typeof migrations_run;
+  migrations: typeof migrations;
   projections: typeof projections;
   recurring: typeof recurring;
 }>;

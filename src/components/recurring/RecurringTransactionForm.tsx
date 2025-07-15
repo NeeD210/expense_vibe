@@ -184,7 +184,10 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
         startDate: startDate.getTime(),
         endDate: endDate?.getTime(),
         cuotas: 1,
+        nextDueDateCalculationDay: frequency === 'monthly' || frequency === 'yearly' ? startDate.getDate() : undefined,
       };
+
+      console.log('RecurringTransactionForm formData:', formData); // Debug log
 
       if (editId) {
         await updateRecurringTransaction({

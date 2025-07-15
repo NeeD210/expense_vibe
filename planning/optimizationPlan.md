@@ -117,7 +117,6 @@ Efficient queries fetch only necessary data and process it quickly.
 
 3.  **Pagination for Large Datasets:**
     *   **Implement Everywhere Needed:** For any query that can return a large number of items (e.g., transaction histories, lists that feed into projections), implement robust pagination.
-    *   **Convex `paginate()`:** Use Convex's built-in `paginate()` method with `paginationOptsValidator` (`numItems`, `cursor`).
 
 4.  **Reduce Query Count:**
     *   **Combine Queries:** Where feasible, combine multiple related queries into a single, more comprehensive query to reduce network overhead and potential race conditions.
@@ -127,6 +126,7 @@ Efficient queries fetch only necessary data and process it quickly.
     *   **Deep Dive:** Analyze this specific query in `convex/projections.ts`. How are `installment` and `recurring` transactions identified and aggregated?
     *   **Efficiency:** Are there loops fetching related data (N+1 problem)? Can these be optimized by fetching related data in batches or restructuring the query?
     *   **Complex Calculations:** If this query involves complex calculations on raw data, evaluate if some of these can be pre-calculated, done incrementally, or shifted to a scheduled task if real-time accuracy isn't paramount for all aspects.
+    *   **Note:** Pagination has been removed from `getProjectedPayments` for simplicity and performance. All projection items are now returned in a single array.
 
 ### C. Mutation and Action Optimization
 
@@ -220,6 +220,94 @@ For user inputs that trigger re-calculations or data re-fetches (e.g., date rang
 *   **Throttle:** Limit the rate at which a function can be executed (e.g., once every 200ms).
 *   The existing `DateRangePicker` might already handle some of this, but it's a general strategy to keep in mind.
 
+### C. Frontend Optimization Checklist
+
+#### 1. HomePage.tsx
+- [x] Implement React.memo for list components
+  - Transaction list items
+  - Chart components
+- [x] Add useMemo for expensive calculations
+  - Category totals calculations
+  - Monthly data aggregations
+  - Chart data transformations
+- [x] Optimize component rendering with useCallback
+  - Event handlers for chart type switching
+  - Category name lookup functions
+- [x] Implement virtualization for transaction lists
+- [x] Review and optimize conditional rendering
+  - Chart type switching
+  - Loading states
+
+#### 2. ProjectionPage.tsx
+- [x] Implement React.memo for list components (already done)
+- [x] Add useMemo for expensive calculations (already done)
+- [x] Optimize component rendering with useCallback (already done)
+- [x] Implement virtualization for long lists (already done)
+- [ ] Review and optimize conditional rendering
+  - Loading states
+  - Error states
+  - Empty states
+
+#### 3. ConfigPage.tsx
+- [ ] Implement React.memo for list components
+  - Category lists
+  - Payment type lists
+- [ ] Add useMemo for expensive calculations
+  - Category filtering
+  - Payment type filtering
+- [ ] Optimize component rendering with useCallback
+  - Category management functions
+  - Payment type management functions
+- [ ] Review and optimize conditional rendering
+  - View switching
+  - Loading states
+
+#### 4. AddExpensePage.tsx
+- [ ] Implement React.memo for form components
+- [ ] Add useMemo for expensive calculations
+  - Category filtering
+  - Payment type filtering
+- [ ] Optimize component rendering with useCallback
+  - Form submission handlers
+  - Validation functions
+- [ ] Review and optimize conditional rendering
+  - Form validation states
+  - Loading states
+
+#### 5. ManageTransactionsPage.tsx
+- [ ] Implement React.memo for list components
+  - Transaction list items
+  - Recurring transaction lists
+- [ ] Add useMemo for expensive calculations
+  - Transaction filtering
+  - Category lookups
+  - Payment type lookups
+- [ ] Optimize component rendering with useCallback
+  - Transaction management functions
+  - Swipe handlers
+  - Tab switching functions
+- [ ] Implement virtualization for transaction lists
+- [ ] Review and optimize conditional rendering
+  - Tab switching
+  - Loading states
+  - Swipe states
+
+#### 6. TransactionsNavigationPage.tsx
+- [ ] Implement React.memo for navigation cards
+- [ ] Optimize component rendering with useCallback
+  - Navigation handlers
+- [ ] Review and optimize conditional rendering
+  - Loading states
+
+#### General Optimization Tasks Across All Pages
+1. [ ] Implement proper loading states and skeletons
+2. [ ] Add error boundaries for better error handling
+3. [ ] Optimize data fetching patterns
+4. [ ] Implement proper code splitting
+5. [ ] Add proper TypeScript types for all components
+6. [ ] Implement proper accessibility features
+7. [ ] Add proper test coverage
+
 ## III. Monitoring and Profiling
 
 You can't optimize what you don't measure.
@@ -250,117 +338,4 @@ This is a suggested prioritization. Adjust based on observed performance issues.
 
 1.  **High Priority (Immediate Gains):**
     *   **Frontend:**
-        *   Implement `useMemo` for all major calculations and data transformations in `ProjectionPage.tsx` (e.g., `totalExpenses`, `totalIncome`, `netFlow`, `monthlyData`, `barChartData`, `groupedData`).
-        *   Refactor `getCategoryName` in `ProjectionPage.tsx` to use a pre-computed `Map` via `useMemo`.
-    *   **Backend:**
-        *   Thoroughly review and optimize indexes for queries related to `getProjectedPayments` (in `convex/projections.ts` or similar) and `getCategoriesWithIdsIncludingDeleted`. Ensure all filters and sorts are index-backed.
-
-2.  **Medium Priority (Significant Improvements):**
-    *   **Frontend:**
-        *   Wrap list item components (e.g., `TransactionItem`) and section components (e.g., `MonthAccordion`) in `React.memo`.
-        *   Investigate and implement virtualization for the transaction lists within the accordion if they can become very long.
-    *   **Backend:**
-        *   Ensure all list queries (especially those that could feed into projections) use Convex's pagination (`paginate` method).
-        *   Strictly enforce the "no `.filter()` on query results" rule; use `withIndex`.
-
-3.  **Low Priority / Long-term Considerations:**
-    *   **Frontend:**
-        *   Explore code splitting for `ProjectionPage.tsx` if the component and its dependencies grow significantly.
-    *   **Backend:**
-        *   If query performance remains an issue after thorough indexing and query optimization, investigate strategic denormalization for critical projection data.
-        *   Review if any complex data aggregation for projections could be moved to scheduled tasks for pre-computation.
-
-## V. Performance Metrics Tracking
-
-### A. Function Execution Times
-
-#### getProjectedPayments Query
-| Timestamp | Execution Time | Notes |
-|-----------|----------------|-------|
-| 2024-03-24 15:30:00 | 33ms | Initial measurement |
-| 2024-03-24 15:30:00 | 33ms | After schema optimization |
-| 2024-03-24 15:30:00 | 25-28ms | After query optimization and caching |
-
-Breakdown of execution time:
-- Payment schedules filtering: <1ms (improved with compound index)
-- Expense lookups: <1ms (optimized with batch query)
-- Recurring transactions filtering: <1ms (optimized with compound index)
-- Recurring items generation: 23-26ms (improved from 30ms)
-  - Date calculations: 10-12ms (improved from 15ms)
-  - Item generation: 13-14ms (improved from 15ms)
-- Final sorting and combination: <1ms
-
-#### Other Critical Functions
-| Function | Timestamp | Execution Time | Notes |
-|----------|-----------|----------------|-------|
-| listExpenses | 2024-03-24 15:30:00 | 1ms | Initial measurement |
-| getHistoricPaymentTypes | 2024-03-24 15:30:00 | 1ms | Initial measurement |
-| getCategoriesWithIdsIncludingDeleted | 2024-03-24 15:30:00 | 1ms | Initial measurement |
-| listAllTransactions | 2024-03-24 15:30:00 | 1ms | Initial measurement |
-
-### B. Performance Monitoring Guidelines
-
-1. **When to Measure**:
-   - After each significant optimization
-   - During peak usage times
-   - After schema changes
-   - After index modifications
-
-2. **What to Measure**:
-   - Total execution time
-   - Individual operation times
-   - Memory usage (if available)
-   - Number of documents processed
-   - Number of queries executed
-
-3. **How to Measure**:
-   - Use Convex dashboard metrics
-   - Add detailed logging with timestamps
-   - Track operation counts
-   - Monitor error rates
-
-4. **Documentation Format**:
-   ```
-   | Timestamp | Function | Execution Time | Operation Count | Notes |
-   |-----------|----------|----------------|-----------------|-------|
-   | YYYY-MM-DD HH:MM:SS | functionName | XXms | N operations | Description |
-   ```
-
-### C. Performance Goals
-
-1. **Query Response Times**:
-   - Critical queries: < 50ms
-   - Standard queries: < 100ms
-   - Complex operations: < 200ms
-
-2. **Resource Usage**:
-   - Memory: < 100MB per operation
-   - CPU: < 50% utilization
-   - Network: < 1MB per request
-
-3. **Scalability Targets**:
-   - Support up to 10,000 transactions per user
-   - Handle up to 100 concurrent users
-   - Process up to 1,000 recurring transactions
-
-### D. Monitoring Alerts
-
-1. **Performance Thresholds**:
-   - Query time > 200ms
-   - Error rate > 1%
-   - Memory usage > 200MB
-   - CPU usage > 80%
-
-2. **Alert Channels**:
-   - Convex dashboard notifications
-   - Email alerts
-   - Slack notifications
-
-3. **Response Protocol**:
-   - Immediate investigation for critical alerts
-   - Daily review of performance metrics
-   - Weekly optimization planning
-
-## Conclusion
-
-A systematic approach to optimization, covering both backend and frontend, will lead to a significantly more performant and scalable application. This plan provides a roadmap, but remember that optimization is an ongoing, iterative process informed by continuous monitoring and profiling. 
+        *   Implement `useMemo` for all major calculations and data transformations in `ProjectionPage.tsx` (e.g., `totalExpenses`, `totalIncome`, `netFlow`, `

@@ -36,6 +36,7 @@ export const addRecurringTransaction = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    console.log('addRecurringTransaction nextDueDateCalculationDay:', args.nextDueDateCalculationDay); // Debug log
     const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 

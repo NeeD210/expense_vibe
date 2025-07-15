@@ -28,12 +28,6 @@ interface ProjectionItem {
   transactionType?: string;
 }
 
-// Type for the Convex query result
-type ProjectionsResult = ProjectionItem[] | {
-  page?: ProjectionItem[];
-  items?: ProjectionItem[];
-};
-
 // Colors for the different transaction types
 const typeColors = {
   installment: '#C554C4', // Scheduled Payments (bright magenta/violet)
@@ -44,7 +38,8 @@ const typeColors = {
 export default function ProjectionPage() {
   const { user } = useAuth0();
 
-  const projectionsResult = useQuery(api.projections.getProjectedPayments, {}) as ProjectionsResult;
+  // Now returns a simple array
+  const projections = useQuery(api.projections.getProjectedPayments, {}) ?? [];
   const categories = useQuery(api.expenses.getCategoriesWithIdsIncludingDeleted) ?? [];
 
   // Helper to get category name from id
@@ -54,38 +49,11 @@ export default function ProjectionPage() {
   };
 
   // Show loading state while data is being fetched
-  if (!projectionsResult || !categories) {
+  if (!projections || !categories) {
     return (
       <div className="container mx-auto p-4">
         <div className="flex items-center justify-center h-64">
           <div className="text-lg text-muted-foreground">Loading projections...</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Debug logging
-  console.log("Projections result:", projectionsResult);
-  console.log("Categories data:", categories);
-
-  // Extract the array from the result
-  const projections = Array.isArray(projectionsResult) ? projectionsResult : 
-    (projectionsResult.page || projectionsResult.items || []);
-
-  // Ensure we have valid projections data
-  if (!Array.isArray(projections) || projections.length === 0) {
-    console.error("Invalid projections data:", projectionsResult);
-    return (
-      <div className="container mx-auto p-4">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-red-500">
-            Error: No projection data available
-            <div className="text-sm mt-2">
-              {!Array.isArray(projections) ? 
-                `Expected array, got ${typeof projectionsResult}` : 
-                "No projection items found"}
-            </div>
-          </div>
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 ---
 description: Guidelines and best practices for building Convex projects, including database schema design, queries, mutations, and real-world examples
 globs: **/*.ts,**/*.tsx,**/*.js,**/*.jsx
+alwaysApply: false
 ---
 
 # Convex guidelines
@@ -153,9 +154,8 @@ globs: **/*.ts,**/*.tsx,**/*.js,**/*.jsx
                             ```ts
                             import { v } from "convex/values";
                             import { query, mutation } from "./_generated/server";
-                            import { paginationOptsValidator } from "convex/server";
                             export const listWithExtraArg = query({
-                                args: { paginationOpts: paginationOptsValidator, author: v.string() },
+                                args: { author: v.string() },
                                 handler: async (ctx, args) => {
                                     return await ctx.db
                                     .query("messages")
@@ -165,14 +165,7 @@ globs: **/*.ts,**/*.tsx,**/*.js,**/*.jsx
                                 },
                             });
                             ```
-                            Note: `paginationOpts` is an object with the following properties:
-                            - `numItems`: the maximum number of documents to return (the validator is `v.number()`)
-                            - `cursor`: the cursor to use to fetch the next page of documents (the validator is `v.union(v.string(), v.null())`)
-- A query that ends in `.paginate()` returns an object that has the following properties:
-                            - page (contains an array of documents that you fetches)
-                            - isDone (a boolean that represents whether or not this is the last page of documents)
-                            - continueCursor (a string that represents the cursor to use to fetch the next page of documents)
-
+                            Note: The projections query (getProjectedPayments) is now non-paginated and returns all items in a single array.
 
 ## Validator guidelines
 - `v.bigint()` is deprecated for representing signed 64-bit integers. Use `v.int64()` instead.
@@ -282,7 +275,7 @@ const messages = await ctx.db
                             export default crons;
                             ```
 - You can register Convex functions within `crons.ts` just like any other file.
-- If a cron calls an internal function, always import the `internal` object from '_generated/api`, even if the internal function is registered in the same file.
+- If a cron calls an internal function, always import the `internal` object from '_generated/api', even if the internal function is registered in the same file.
 
 
 ## File storage guidelines

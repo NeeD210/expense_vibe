@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -21,6 +21,64 @@ interface PaymentTypeFormProps {
   renderActions?: (props: { handleSubmit: (e: React.FormEvent) => void }) => React.ReactNode;
 }
 
+// Memoized form field components
+const FormField = React.memo(({ 
+  label, 
+  children 
+}: { 
+  label: string; 
+  children: React.ReactNode;
+}) => (
+  <div className="space-y-2">
+    <Label>{label}</Label>
+    {children}
+  </div>
+));
+
+FormField.displayName = 'FormField';
+
+const CreditCardFields = React.memo(({ 
+  closingDay, 
+  setClosingDay, 
+  dueDay, 
+  setDueDay 
+}: { 
+  closingDay: string;
+  setClosingDay: (value: string) => void;
+  dueDay: string;
+  setDueDay: (value: string) => void;
+}) => (
+  <div className="grid grid-cols-2 gap-4">
+    <FormField label="Closing Day (1-31)">
+      <Input
+        id="closingDay"
+        type="number"
+        value={closingDay}
+        onChange={(e) => setClosingDay(e.target.value)}
+        min="1"
+        max="31"
+        required
+        className="h-10"
+      />
+    </FormField>
+
+    <FormField label="Due Day (1-31)">
+      <Input
+        id="dueDay"
+        type="number"
+        value={dueDay}
+        onChange={(e) => setDueDay(e.target.value)}
+        min="1"
+        max="31"
+        required
+        className="h-10"
+      />
+    </FormField>
+  </div>
+));
+
+CreditCardFields.displayName = 'CreditCardFields';
+
 export function PaymentTypeForm({ onSuccess, onCancel, initialData, renderActions }: PaymentTypeFormProps) {
   const [name, setName] = useState(initialData?.name ?? "");
   const [isCredit, setIsCredit] = useState(initialData?.isCredit ?? false);
@@ -31,10 +89,32 @@ export function PaymentTypeForm({ onSuccess, onCancel, initialData, renderAction
   const updatePaymentTypes = useMutation(api.expenses.updatePaymentTypes);
   const existingPaymentTypes = useQuery(api.expenses.getPaymentTypes) ?? [];
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Memoize form validation
+  const validateForm = useCallback(() => {
+    if (!name.trim()) {
+      throw new Error("Name is required");
+    }
+
+    if (isCredit) {
+      const closingDayNum = parseInt(closingDay);
+      const dueDayNum = parseInt(dueDay);
+      
+      if (isNaN(closingDayNum) || isNaN(dueDayNum)) {
+        throw new Error("Closing day and due day must be numbers");
+      }
+      
+      if (closingDayNum < 1 || closingDayNum > 31 || dueDayNum < 1 || dueDayNum > 31) {
+        throw new Error("Closing day and due day must be between 1 and 31");
+      }
+    }
+  }, [name, isCredit, closingDay, dueDay]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
+      validateForm();
+
       if (initialData) {
         // Update existing payment type
         const updatedPaymentTypes = existingPaymentTypes.map(type => {
@@ -69,14 +149,26 @@ export function PaymentTypeForm({ onSuccess, onCancel, initialData, renderAction
       onSuccess?.();
     } catch (error) {
       console.error("Error saving payment type:", error);
-      alert("Error saving payment type. Please try again.");
+      alert(error instanceof Error ? error.message : "Error saving payment type. Please try again.");
     }
-  };
+  }, [name, isCredit, closingDay, dueDay, initialData, existingPaymentTypes, addPaymentType, updatePaymentTypes, onSuccess, validateForm]);
+
+  // Memoize the credit card fields
+  const creditCardFields = useMemo(() => {
+    if (!isCredit) return null;
+    return (
+      <CreditCardFields
+        closingDay={closingDay}
+        setClosingDay={setClosingDay}
+        dueDay={dueDay}
+        setDueDay={setDueDay}
+      />
+    );
+  }, [isCredit, closingDay, dueDay]);
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Name</Label>
+      <FormField label="Name">
         <Input
           id="name"
           type="text"
@@ -86,7 +178,7 @@ export function PaymentTypeForm({ onSuccess, onCancel, initialData, renderAction
           required
           className="h-10"
         />
-      </div>
+      </FormField>
 
       <div className="flex items-center space-x-2">
         <Checkbox
@@ -99,37 +191,7 @@ export function PaymentTypeForm({ onSuccess, onCancel, initialData, renderAction
         </Label>
       </div>
 
-      {isCredit && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="closingDay">Closing Day (1-31)</Label>
-            <Input
-              id="closingDay"
-              type="number"
-              value={closingDay}
-              onChange={(e) => setClosingDay(e.target.value)}
-              min="1"
-              max="31"
-              required
-              className="h-10"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="dueDay">Due Day (1-31)</Label>
-            <Input
-              id="dueDay"
-              type="number"
-              value={dueDay}
-              onChange={(e) => setDueDay(e.target.value)}
-              min="1"
-              max="31"
-              required
-              className="h-10"
-            />
-          </div>
-        </div>
-      )}
+      {creditCardFields}
 
       {renderActions ? (
         renderActions({ handleSubmit })
