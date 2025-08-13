@@ -137,7 +137,7 @@ export const loggedInUser = query({
 
     const user = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("auth0Id"), identity.tokenIdentifier))
+      .filter((q) => q.eq(q.field("auth0Id"), identity.subject))
       .first();
 
     return user ?? null;

@@ -3,6 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { addMonths, setDate } from "date-fns";
 import { internal } from "./_generated/api";
+import { calculateNextDueDateForPaymentType } from "./lib/scheduling";
 
 const defaultCategories = [
   "Vivienda",
@@ -19,11 +20,7 @@ const defaultCategories = [
   "Otras"
 ];
 
-const defaultPaymentTypes = [
-  "Efectivo o Transferencia",
-  "Tarjeta 1",
-  "Tarjeta 2"
-];
+// default payment types are handled in auth.createUser
 
 // Helper function to get the authenticated user's ID
 async function getAuthenticatedUserId(ctx: { auth: { getUserIdentity: () => Promise<any> }, db: any }): Promise<Id<"users"> | null> {
@@ -39,123 +36,13 @@ async function getAuthenticatedUserId(ctx: { auth: { getUserIdentity: () => Prom
 }
 
 // Internal helper to generate payment schedules
-export const generatePaymentSchedules = mutation({
-  args: {
-    expenseId: v.id("expenses"),
-    firstDueDate: v.number(),
-    totalAmount: v.number(),
-    totalInstallments: v.number(),
-    userId: v.id("users"),
-    paymentTypeId: v.id("paymentTypes"),
-  },
-  handler: async (ctx, args) => {
-    const { expenseId, firstDueDate, totalAmount, totalInstallments, userId, paymentTypeId } = args;
-
-    // Delete any existing payment schedules for this expense
-    const existingSchedules = await ctx.db
-      .query("paymentSchedules")
-      .withIndex("by_expenseId", q => q.eq("expenseId", expenseId))
-      .collect();
-
-    for (const schedule of existingSchedules) {
-      await ctx.db.patch(schedule._id, { softdelete: true });
-    }
-
-    // If only one installment, create a single schedule
-    if (totalInstallments === 1) {
-      await ctx.db.insert("paymentSchedules", {
-        userId,
-        expenseId,
-        paymentTypeId,
-        amount: totalAmount,
-        dueDate: firstDueDate,
-        installmentNumber: 1,
-        totalInstallments: 1,
-        softdelete: false,
-      });
-      return;
-    }
-
-    // For multiple installments, create a schedule for each
-    const installmentAmount = totalAmount / totalInstallments;
-    for (let i = 1; i <= totalInstallments; i++) {
-      const dueDate = i === 1 
-        ? firstDueDate 
-        : addMonths(new Date(firstDueDate), i - 1).getTime();
-
-      await ctx.db.insert("paymentSchedules", {
-        userId,
-        expenseId,
-        paymentTypeId,
-        amount: installmentAmount,
-        dueDate,
-        installmentNumber: i,
-        totalInstallments,
-        softdelete: false,
-      });
-    }
-  },
-});
+// Removed local schedule generator; use internal/internal version as the single source of truth
 
 // Helper to calculate next due date based on payment type
 async function calculateNextDueDate(ctx: any, date: number, paymentTypeId: Id<"paymentTypes">): Promise<number> {
   const paymentType = await ctx.db.get(paymentTypeId);
   if (!paymentType) throw new Error("Payment type not found");
-
-  if (!paymentType.isCredit || !paymentType.closingDay || !paymentType.dueDay) {
-    return date;
-  }
-
-  const transactionDate = new Date(date);
-  const closingDay = paymentType.closingDay;
-  const dueDay = paymentType.dueDay;
-
-  // Step 1: Determine the Closing Date of the Billing Cycle
-  let effectiveClosingDate: Date;
-  const transactionDay = transactionDate.getDate();
-  const transactionMonth = transactionDate.getMonth();
-  const transactionYear = transactionDate.getFullYear();
-
-  // First, calculate what would be the closing date in the current month
-  const currentMonthClosingDate = new Date(transactionYear, transactionMonth, closingDay);
-  
-  // If the transaction is before or on the current month's closing date,
-  // it belongs to the current billing cycle
-  if (transactionDate <= currentMonthClosingDate) {
-    effectiveClosingDate = currentMonthClosingDate;
-  } else {
-    // Otherwise, it belongs to next month's billing cycle
-    let nextMonth = transactionMonth + 1;
-    let nextYear = transactionYear;
-    
-    // Handle December to January transition
-    if (nextMonth > 11) {
-      nextMonth = 0;
-      nextYear += 1;
-    }
-    
-    effectiveClosingDate = new Date(nextYear, nextMonth, closingDay);
-  }
-
-  // Step 2: Calculate the Payment Due Date
-  let dueMonth = effectiveClosingDate.getMonth();
-  let dueYear = effectiveClosingDate.getFullYear();
-
-  // If due day is after closing day, the due date is in the same month as the closing date
-  // If due day is before closing day, the due date is in the next month
-  if (dueDay < closingDay) {
-    dueMonth += 1;
-    // Handle December to January transition
-    if (dueMonth > 11) {
-      dueMonth = 0;
-      dueYear += 1;
-    }
-  }
-
-  // Create the final due date and add one day
-  const nextDueDate = new Date(dueYear, dueMonth, dueDay);
-  nextDueDate.setDate(nextDueDate.getDate() + 1);
-  return nextDueDate.getTime();
+  return calculateNextDueDateForPaymentType(date, paymentType);
 }
 
 export const addExpense = mutation({
@@ -172,6 +59,13 @@ export const addExpense = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
+
+    if (!Number.isFinite(args.cuotas) || args.cuotas < 1) {
+      throw new Error("cuotas must be >= 1");
+    }
+    if (!Number.isFinite(args.amount)) {
+      throw new Error("amount must be a finite number");
+    }
     
     // Get the category name from the category ID
     const category = await ctx.db.get(args.categoryId);
@@ -285,7 +179,8 @@ export const getCategories = query({
   },
 });
 
-export const initializeDefaultCategories = mutation({
+// initialize defaults moved to auth.createUser; keep function removed to prevent duplication
+/* export const initializeDefaultCategories = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -327,7 +222,7 @@ export const initializeDefaultCategories = mutation({
       }
     }
   },
-});
+}); */
 
 export const getPaymentTypes = query({
   args: {},
@@ -556,6 +451,13 @@ export const updateExpense = mutation({
       verified: true // Mark as verified when modified by the user
     };
 
+    if (args.cuotas !== undefined && (!Number.isFinite(args.cuotas) || args.cuotas < 1)) {
+      throw new Error("cuotas must be >= 1");
+    }
+    if (args.amount !== undefined && !Number.isFinite(args.amount)) {
+      throw new Error("amount must be a finite number");
+    }
+
     // Update category name if categoryId is provided
     if (args.categoryId) {
       const category = await ctx.db.get(args.categoryId);
@@ -654,7 +556,7 @@ export const getLastTransaction = query({
   },
 });
 
-export const initializeDefaultPaymentTypes = mutation({
+/* export const initializeDefaultPaymentTypes = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -695,7 +597,7 @@ export const initializeDefaultPaymentTypes = mutation({
       }
     }
   },
-});
+}); */
 
 export const getCategoriesWithIds = query({
   handler: async (ctx) => {

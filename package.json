@@ -4,11 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "convex dev --once && node setup.mjs && npm-run-all --parallel dev:frontend dev:backend",
+    "dev": "npx convex dev --once && node setup.mjs && npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "vite --open",
-    "dev:backend": "convex dev",
+    "dev:backend": "npx convex dev",
     "build": "vite build",
-    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build",
+    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && npx convex dev --once && vite build",
+    "test": "vitest run tests/unit",
+    "test:watch": "vitest",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -61,6 +63,12 @@
     "convex": "1.21.1-alpha.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.2",
+    "jsdom": "^24.0.0",
+    "vitest": "^1.6.0",
+    "@vitest/coverage-v8": "^1.6.0",
     "@eslint/js": "^8.56.0",
     "@playwright/test": "^1.53.1",
     "@types/node": "^20.11.19",

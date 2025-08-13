@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { cache, CACHE_DURATION, CACHE_KEYS } from "./cache";
+// caching utilities were removed for now; reintroduce later if needed
 import type { QueryCtx, DatabaseReader } from "./_generated/server";
 
 // Helper function to get the authenticated user's ID

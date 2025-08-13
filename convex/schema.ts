@@ -66,12 +66,15 @@ export default defineSchema({
     endDate: v.optional(v.float64()),
     lastProcessedDate: v.optional(v.float64()),
     nextDueDateCalculationDay: v.optional(v.float64()),
+    nextDueDate: v.optional(v.float64()),
     isActive: v.boolean(),
     softdelete: v.optional(v.boolean()),
     cuotas: v.optional(v.float64()),
   })
   .index("by_user_isActive_startDate", ["userId", "isActive", "startDate"])
   .index("by_isActive_lastProcessedDate", ["isActive", "lastProcessedDate"])
+  .index("by_isActive_nextDueDate", ["isActive", "nextDueDate"]) 
+  .index("by_user_isActive_nextDueDate", ["userId", "isActive", "nextDueDate"]) 
   .index("by_user_softdelete", ["userId", "softdelete"])
   .index("by_user_isActive_softdelete", ["userId", "isActive", "softdelete"])
   .index("by_user_isActive_startDate_softdelete", ["userId", "isActive", "startDate", "softdelete"]),

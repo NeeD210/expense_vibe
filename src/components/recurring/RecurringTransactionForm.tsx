@@ -184,7 +184,7 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
         startDate: startDate.getTime(),
         endDate: endDate?.getTime(),
         cuotas: 1,
-        nextDueDateCalculationDay: frequency === 'monthly' || frequency === 'yearly' ? startDate.getDate() : undefined,
+        // nextDueDateCalculationDay deprecated; backend computes nextDueDate
       };
 
       console.log('RecurringTransactionForm formData:', formData); // Debug log

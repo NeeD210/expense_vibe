@@ -1,23 +1,19 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
+import { stepDateByFrequency } from "./lib/scheduling";
 
 // Internal query to get recurring transactions that need to be processed
 export const getRecurringTransactionsToProcess = internalQuery({
   handler: async (ctx) => {
-    const currentTimestamp = Date.now();
-    
-    return await ctx.db
+    const now = Date.now();
+    const due = await ctx.db
       .query("recurringTransactions")
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .withIndex("by_isActive_nextDueDate", (q) => q.eq("isActive", true))
       .filter((q) => q.eq(q.field("softdelete"), false))
-      .filter((q) => {
-        const frequency = q.field("frequency") as unknown as string;
-        const threshold = determineLastProcessingThreshold(frequency, currentTimestamp);
-        return q.lt(q.field("lastProcessedDate"), threshold);
-      })
-      .collect();
+      .filter((q) => q.lte(q.field("nextDueDate"), now))
+      .take(200);
+    return due;
   },
 });
 
@@ -25,7 +21,7 @@ export const getRecurringTransactionsToProcess = internalQuery({
 export const generateTransactionFromRecurring = internalMutation({
   args: {
     recurringTransactionId: v.id("recurringTransactions"),
-    targetDate: v.optional(v.number()),
+    targetDate: v.number(),
   },
   handler: async (ctx, args) => {
     const recurringTransaction = await ctx.db.get(args.recurringTransactionId);
@@ -33,26 +29,26 @@ export const generateTransactionFromRecurring = internalMutation({
       throw new Error("Recurring transaction not found");
     }
 
-    // Get the category to include category name
+    // Respect boundaries
+    if (args.targetDate < recurringTransaction.startDate) {
+      throw new Error("Target date before startDate");
+    }
+    if (recurringTransaction.endDate && args.targetDate > recurringTransaction.endDate) {
+      await ctx.db.patch(args.recurringTransactionId, { isActive: false, nextDueDate: undefined });
+      throw new Error("Recurring transaction past endDate; deactivated");
+    }
+
     const category = await ctx.db.get(recurringTransaction.categoryId);
-    if (!category) {
-      throw new Error("Category not found");
-    }
+    if (!category) throw new Error("Category not found");
 
-    // Get the payment type
-    const paymentType = recurringTransaction.paymentTypeId ? await ctx.db.get(recurringTransaction.paymentTypeId) : null;
-    if (recurringTransaction.paymentTypeId && !paymentType) {
-      throw new Error("Payment type not found");
-    }
+    // Idempotency: avoid duplicates for same recurringId+date
+    const existing = await ctx.db
+      .query("expenses")
+      .withIndex("by_recurringTransactionId", (q) => q.eq("recurringTransactionId", args.recurringTransactionId))
+      .filter((q) => q.eq(q.field("date"), args.targetDate))
+      .first();
+    if (existing) return existing._id;
 
-    const transactionDate = args.targetDate ?? Date.now();
-
-    // Calculate next due date using the same logic as addExpense
-    const nextDueDate = recurringTransaction.paymentTypeId ? 
-      await calculateNextDueDate(ctx, transactionDate, recurringTransaction.paymentTypeId) : 
-      undefined;
-
-    // Create the transaction
     const transactionId = await ctx.db.insert("expenses", {
       userId: recurringTransaction.userId,
       description: recurringTransaction.description,
@@ -61,26 +57,27 @@ export const generateTransactionFromRecurring = internalMutation({
       categoryId: recurringTransaction.categoryId,
       paymentTypeId: recurringTransaction.paymentTypeId,
       transactionType: recurringTransaction.transactionType,
-      date: transactionDate,
+      date: args.targetDate,
       cuotas: recurringTransaction.cuotas ?? 1,
       verified: false,
       recurringTransactionId: args.recurringTransactionId,
       softdelete: false,
     });
 
-    // Update the last processed date
+    const anchorDay = new Date(recurringTransaction.startDate).getDate();
+    const advancedNext = stepDateByFrequency(args.targetDate, recurringTransaction.frequency as any, anchorDay);
     await ctx.db.patch(args.recurringTransactionId, {
-      lastProcessedDate: transactionDate,
+      lastProcessedDate: args.targetDate,
+      nextDueDate: advancedNext,
     });
 
-    // Generate payment schedules if payment type exists
-    if (recurringTransaction.paymentTypeId && nextDueDate) {
+    if ((recurringTransaction.cuotas ?? 1) > 1 && recurringTransaction.paymentTypeId) {
       await ctx.runMutation(internal.internal.expenses.generatePaymentSchedules, {
         paymentTypeId: recurringTransaction.paymentTypeId,
         userId: recurringTransaction.userId,
         expenseId: transactionId,
         totalInstallments: recurringTransaction.cuotas ?? 1,
-        firstDueDate: nextDueDate,
+        firstDueDate: args.targetDate,
         totalAmount: recurringTransaction.amount,
       });
     }
@@ -89,80 +86,4 @@ export const generateTransactionFromRecurring = internalMutation({
   },
 });
 
-// Helper function to determine the last processing threshold based on frequency
-function determineLastProcessingThreshold(frequency: string, currentTimestamp: number): number {
-  const now = new Date(currentTimestamp);
-  switch (frequency) {
-    case "daily":
-      return new Date(now.setDate(now.getDate() - 1)).getTime();
-    case "weekly":
-      return new Date(now.setDate(now.getDate() - 7)).getTime();
-    case "monthly":
-      return new Date(now.setMonth(now.getMonth() - 1)).getTime();
-    case "yearly":
-      return new Date(now.setFullYear(now.getFullYear() - 1)).getTime();
-    default:
-      return 0;
-  }
-}
-
-// Helper function to calculate next due date based on payment type
-async function calculateNextDueDate(ctx: any, date: number, paymentTypeId: Id<"paymentTypes">): Promise<number> {
-  const paymentType = await ctx.db.get(paymentTypeId);
-  if (!paymentType) throw new Error("Payment type not found");
-
-  if (!paymentType.isCredit || !paymentType.closingDay || !paymentType.dueDay) {
-    return date;
-  }
-
-  const transactionDate = new Date(date);
-  const closingDay = paymentType.closingDay;
-  const dueDay = paymentType.dueDay;
-
-  // Step 1: Determine the Closing Date of the Billing Cycle
-  let effectiveClosingDate: Date;
-  const transactionDay = transactionDate.getDate();
-  const transactionMonth = transactionDate.getMonth();
-  const transactionYear = transactionDate.getFullYear();
-
-  // First, calculate what would be the closing date in the current month
-  const currentMonthClosingDate = new Date(transactionYear, transactionMonth, closingDay);
-  
-  // If the transaction is before or on the current month's closing date,
-  // it belongs to the current billing cycle
-  if (transactionDate <= currentMonthClosingDate) {
-    effectiveClosingDate = currentMonthClosingDate;
-  } else {
-    // Otherwise, it belongs to next month's billing cycle
-    let nextMonth = transactionMonth + 1;
-    let nextYear = transactionYear;
-    
-    // Handle December to January transition
-    if (nextMonth > 11) {
-      nextMonth = 0;
-      nextYear += 1;
-    }
-    
-    effectiveClosingDate = new Date(nextYear, nextMonth, closingDay);
-  }
-
-  // Step 2: Calculate the Payment Due Date
-  let dueMonth = effectiveClosingDate.getMonth();
-  let dueYear = effectiveClosingDate.getFullYear();
-
-  // If due day is after closing day, the due date is in the same month as the closing date
-  // If due day is before closing day, the due date is in the next month
-  if (dueDay < closingDay) {
-    dueMonth += 1;
-    // Handle December to January transition
-    if (dueMonth > 11) {
-      dueMonth = 0;
-      dueYear += 1;
-    }
-  }
-
-  // Create the final due date and add one day
-  const nextDueDate = new Date(dueYear, dueMonth, dueDay);
-  nextDueDate.setDate(nextDueDate.getDate() + 1);
-  return nextDueDate.getTime();
-} 
+// Removed legacy helpers; nextDueDate progression is handled by frequency stepping

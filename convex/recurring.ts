@@ -1,11 +1,8 @@
 import { v } from "convex/values";
-import { mutation, query, action } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { addDays, addMonths, addWeeks, addYears, setDate } from "date-fns";
-import { internalMutation } from "./_generated/server";
-import { internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { internalAction } from "./_generated/server";
+import { initializeNextDueDate, stepDateByFrequency } from "./lib/scheduling";
 
 // Helper function to get the authenticated user's ID
 async function getAuthenticatedUserId(ctx: { auth: { getUserIdentity: () => Promise<any> }, db: any }): Promise<Id<"users"> | null> {
@@ -58,6 +55,9 @@ export const addRecurringTransaction = mutation({
     }
 
     // Create the recurring transaction
+    const now = Date.now();
+    const initialNextDueDate = initializeNextDueDate(args.startDate, now, args.frequency as any);
+
     const recurringTransactionId = await ctx.db.insert("recurringTransactions", {
       userId,
       description: args.description,
@@ -70,42 +70,21 @@ export const addRecurringTransaction = mutation({
       endDate: args.endDate,
       lastProcessedDate: undefined,
       nextDueDateCalculationDay: args.nextDueDateCalculationDay,
+      nextDueDate: initialNextDueDate,
       isActive: args.isActive ?? true,
       softdelete: false,
       cuotas: args.cuotas ?? 1,
     });
 
-    // Generate transactions for past dates
-    const currentDate = Date.now();
-    let currentDateToProcess = args.startDate;
-    
-    while (currentDateToProcess <= currentDate) {
-      // Generate transaction for this date
+    // Backfill only if startDate is in the past: repeatedly generate for due dates < now
+    let targetDate = args.startDate;
+    const anchorDay = new Date(args.startDate).getDate();
+    while (targetDate <= now && (!args.endDate || targetDate <= args.endDate)) {
       await ctx.runMutation(internal.internal.generateTransactionFromRecurring, {
         recurringTransactionId,
-        targetDate: currentDateToProcess,
+        targetDate,
       });
-
-      // Calculate next date based on frequency
-      const nextDate = new Date(currentDateToProcess);
-      switch (args.frequency) {
-        case "daily":
-          nextDate.setDate(nextDate.getDate() + 1);
-          break;
-        case "weekly":
-          nextDate.setDate(nextDate.getDate() + 7);
-          break;
-        case "monthly":
-          nextDate.setMonth(nextDate.getMonth() + 1);
-          break;
-        case "semestrally":
-          nextDate.setMonth(nextDate.getMonth() + 6);
-          break;
-        case "yearly":
-          nextDate.setFullYear(nextDate.getFullYear() + 1);
-          break;
-      }
-      currentDateToProcess = nextDate.getTime();
+      targetDate = stepDateByFrequency(targetDate, args.frequency as any, anchorDay);
     }
 
     return recurringTransactionId;
@@ -155,12 +134,16 @@ export const updateRecurringTransaction = mutation({
       }
     }
 
-    // Create update object with only provided fields
+    // Build updates and recompute nextDueDate if frequency/startDate changed
     const updates: any = {};
     for (const [key, value] of Object.entries(args)) {
-      if (key !== "id" && value !== undefined) {
-        updates[key] = value;
-      }
+      if (key !== "id" && value !== undefined) updates[key] = value;
+    }
+    if (updates.startDate || updates.frequency) {
+      const startDate = (updates.startDate ?? recurringTransaction.startDate) as number;
+      const frequency = (updates.frequency ?? recurringTransaction.frequency) as any;
+      const now = Date.now();
+      updates.nextDueDate = initializeNextDueDate(startDate, now, frequency);
     }
 
     await ctx.db.patch(args.id, updates);
@@ -241,29 +224,37 @@ function determineLastProcessingThreshold(frequency: string, currentTimestamp: n
 
 export const getRecurringTransactionsToProcess = query({
   handler: async (ctx) => {
-    const currentTimestamp = Date.now();
-    
-    return await ctx.db
+    const now = Date.now();
+    // Use nextDueDate-based detection in small batches
+    const batch = await ctx.db
       .query("recurringTransactions")
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .withIndex("by_isActive_nextDueDate", (q) => q.eq("isActive", true))
       .filter((q) => q.eq(q.field("softdelete"), false))
-      .filter((q) => {
-        const frequency = q.field("frequency") as unknown as string;
-        const threshold = determineLastProcessingThreshold(frequency, currentTimestamp);
-        return q.lt(q.field("lastProcessedDate"), threshold);
-      })
-      .collect();
+      .filter((q) => q.lte(q.field("nextDueDate"), now))
+      .take(200);
+    return batch;
   },
 });
 
 export const generateTransactionFromRecurring = mutation({
   args: {
     recurringTransactionId: v.id("recurringTransactions"),
+    targetDate: v.number(),
   },
   handler: async (ctx, args) => {
     const recurringTransaction = await ctx.db.get(args.recurringTransactionId);
     if (!recurringTransaction) {
       throw new Error("Recurring transaction not found");
+    }
+
+    // Respect boundaries: do not generate outside start/end window
+    if (args.targetDate < recurringTransaction.startDate) {
+      throw new Error("Target date before startDate");
+    }
+    if (recurringTransaction.endDate && args.targetDate > recurringTransaction.endDate) {
+      // Deactivate and stop further processing
+      await ctx.db.patch(args.recurringTransactionId, { isActive: false, nextDueDate: undefined });
+      throw new Error("Recurring transaction past endDate; deactivated");
     }
 
     // Get the category to include category name
@@ -272,7 +263,17 @@ export const generateTransactionFromRecurring = mutation({
       throw new Error("Category not found");
     }
 
-    // Create the transaction
+    // Idempotency: avoid duplicates for same recurringId + date
+    const existing = await ctx.db
+      .query("expenses")
+      .withIndex("by_recurringTransactionId", (q) => q.eq("recurringTransactionId", args.recurringTransactionId))
+      .filter((q) => q.eq(q.field("date"), args.targetDate))
+      .first();
+    if (existing) {
+      return existing._id;
+    }
+
+    // Create the transaction at the scheduled targetDate
     const transactionId = await ctx.db.insert("expenses", {
       userId: recurringTransaction.userId,
       description: recurringTransaction.description,
@@ -281,16 +282,19 @@ export const generateTransactionFromRecurring = mutation({
       categoryId: recurringTransaction.categoryId,
       paymentTypeId: recurringTransaction.paymentTypeId,
       transactionType: recurringTransaction.transactionType,
-      date: Date.now(),
+      date: args.targetDate,
       cuotas: recurringTransaction.cuotas ?? 1,
       verified: false,
       recurringTransactionId: args.recurringTransactionId,
       softdelete: false,
     });
 
-    // Update the last processed date
+    // Update processing markers: lastProcessedDate and advance nextDueDate
+    const anchorDay = new Date(recurringTransaction.startDate).getDate();
+    const advancedNext = stepDateByFrequency(args.targetDate, recurringTransaction.frequency as any, anchorDay);
     await ctx.db.patch(args.recurringTransactionId, {
-      lastProcessedDate: Date.now(),
+      lastProcessedDate: args.targetDate,
+      nextDueDate: advancedNext,
     });
 
     // If this is an installment payment and has a payment type, generate the payment schedules
@@ -300,7 +304,7 @@ export const generateTransactionFromRecurring = mutation({
         userId: recurringTransaction.userId,
         expenseId: transactionId,
         totalInstallments: recurringTransaction.cuotas ?? 1,
-        firstDueDate: Date.now(),
+        firstDueDate: args.targetDate,
         totalAmount: recurringTransaction.amount,
       });
     }

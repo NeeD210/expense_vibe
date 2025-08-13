@@ -66,6 +66,17 @@ The database is managed using Convex and includes the following tables:
     *   *Index*: `by_user_isActive_startDate` on `userId`, `isActive`, and `startDate`.
     *   *Index*: `by_isActive_lastProcessedDate` on `isActive` and `lastProcessedDate`.
 
+*   **`paymentSchedules`**: Stores generated installment schedules for expenses.
+    *   `userId`: (ID referencing `users`)
+    *   `expenseId`: (ID referencing `expenses`)
+    *   `paymentTypeId`: (ID referencing `paymentTypes`)
+    *   `amount`: (Float64) Amount per installment
+    *   `dueDate`: (Float64) Due date timestamp
+    *   `installmentNumber`: (Float64) 1-based index of the installment
+    *   `totalInstallments`: (Float64) Total installments
+    *   `softdelete`: (Optional Boolean) Flag for soft deletion
+    *   *Indexes*: `by_user_dueDate`, `by_expenseId`, `by_user_dueDate_softdelete`, `by_user_softdelete_dueDate`
+
 ## Backend Functions (Convex)
 
 ### Authentication (`convex/auth.ts`)
@@ -84,13 +95,13 @@ The database is managed using Convex and includes the following tables:
 *   **`getCategories` (query)**: Retrieves category names for the user (or default if none).
 *   **`getCategoriesWithIds` (query)**: Retrieves categories (name, ID, type) for the user, excluding soft-deleted.
 *   **`getCategoriesWithIdsIncludingDeleted` (query)**: Retrieves all categories for the user, including soft-deleted.
-*   **`initializeDefaultCategories` (mutation)**: Creates default categories if the user doesn't have any.
 *   **`updateCategories` (mutation)**: Updates the user's list of categories (adds new, soft-deletes missing ones).
 *   **`getPaymentTypes` (query)**: Retrieves payment types for the user.
 *   **`addPaymentType` (mutation)**: Adds a new payment type for the user.
 *   **`removePaymentType` (mutation)**: Soft-deletes a payment type.
-*   **`initializeDefaultPaymentTypes` (mutation)**: Creates default payment types if the user doesn't have any.
 *   **`updatePaymentTypes` (mutation)**: Updates the user's list of payment types (adds new, soft-deletes missing ones).
+
+Note: Installment schedules are generated via internal mutations in `convex/internal/expenses.ts` and invoked from expense/recurring flows.
 
 ### Recurring Transactions (`convex/recurring.ts`)
 *   **`addRecurringTransaction` (mutation)**: Creates a new recurring transaction.
@@ -102,6 +113,9 @@ The database is managed using Convex and includes the following tables:
 *   **`getRecurringTransactionsToProcess` (query)**: Gets recurring transactions that need to be processed.
 *   **`generateTransactionFromRecurring` (mutation)**: Generates a transaction from a recurring transaction.
 
+### Projections (`convex/projections.ts`)
+*   **`getProjectedPayments` (query)**: Returns forward-looking items combining installment schedules and recurring transactions within a horizon for the authenticated user.
+
 ## Frontend (React with TypeScript)
 
 ### Core Components:
@@ -111,17 +125,24 @@ The database is managed using Convex and includes the following tables:
 
 ### Pages:
 *   **`HomePage.tsx`**: Dashboard with charts and recent transactions.
-*   **`AnalysisPage.tsx`**: Placeholder for future analysis features.
 *   **`AddExpensePage.tsx`**: Form to add new expenses.
 *   **`AddIncomePage.tsx`**: Form to add new income entries.
 *   **`ManageTransactionsPage.tsx`**: Lists and manages all transactions with verification workflow.
 *   **`ConfigPage.tsx`**: Manages user settings and categories.
+*   **`ProjectionPage.tsx`**: Financial projections view.
+*   **`TransactionsNavigationPage.tsx`**: Navigation hub for transactions and recurring.
 
 ### Recurring Transactions Components:
 *   **`RecurringTransactionList.tsx`**: Displays and manages recurring transactions.
 *   **`RecurringTransactionForm.tsx`**: Form for creating and editing recurring transactions.
 
 ## Recent Updates
+
+### Baseline Cleanup and Consolidation
+- Standardized auth identity lookups to `identity.subject`.
+- Consolidated payment schedule generation to `internal/expenses.generatePaymentSchedules`.
+- Cleaned Tailwind duplicate keyframes/animations and updated README.
+- Ignored `convex/_generated/` in Git; switched migrations usage to Convex CLI.
 
 ### Phase 2: Recurring Transactions & Verification Workflow (Implemented)
 
@@ -152,8 +173,4 @@ The application now supports creating and managing recurring transactions, which
    - Integration with existing installment payment scheduling
 
 ### Next Steps
-
-1. **Phase 3 Planning:**
-   - Future payment projection and visualization
-   - Enhanced reporting based on recurring patterns
-   - Long-term financial forecasting 
+Refer to `planning/analysis.md` for the phased implementation plan (Phases 1–6) and prioritized tasks.
