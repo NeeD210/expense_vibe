@@ -16,6 +16,7 @@ type MigrationReturnType = {
     totalErrors: number;
     lastProcessedId?: Id<"recurringTransactions">;
   };
+  // catch-up run is executed separately as an action
 };
 
 // Run all migrations
@@ -33,11 +34,6 @@ export const runAll = internalMutation({
       totalUpdated: v.number(),
       totalErrors: v.number(),
       lastProcessedId: v.optional(v.id("recurringTransactions")),
-    }),
-    catchup: v.object({
-      processedRecurring: v.number(),
-      generatedTransactions: v.number(),
-      batchesRun: v.number(),
     }),
   }),
   handler: async (ctx): Promise<MigrationReturnType> => {
@@ -58,15 +54,9 @@ export const runAll = internalMutation({
       {}
     );
 
-    const catchupResults = await ctx.runAction(
-      internal.migrations.recurring.runRecurringCatchup,
-      {}
-    );
-
     return {
       category: categoryResults,
       recurring: recurringResults,
-      catchup: catchupResults,
     };
   },
 }); 
