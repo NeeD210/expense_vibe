@@ -55,6 +55,21 @@ export default function ManageTransactionsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
   const [isDialogEditing, setIsDialogEditing] = useState<boolean>(false);
   const [isVerifyingAll, setIsVerifyingAll] = useState<boolean>(false);
+  const [isDecliningAll, setIsDecliningAll] = useState<boolean>(false);
+  // Recurring update prompt state
+  const [isRecurringUpdatePromptOpen, setIsRecurringUpdatePromptOpen] = useState<boolean>(false);
+  const [isUpdatingRecurring, setIsUpdatingRecurring] = useState<boolean>(false);
+  type RecurringUpdates = {
+    description?: string;
+    amount?: number;
+    categoryId?: Id<'categories'>;
+    paymentTypeId?: Id<'paymentTypes'>;
+    cuotas?: number;
+  };
+  const [pendingRecurringUpdate, setPendingRecurringUpdate] = useState<{
+    id: Id<'recurringTransactions'>;
+    updates: RecurringUpdates;
+  } | null>(null);
   
   // Recurring transactions state & data
   const recurringTransactionsData = useQuery(api.recurring.listRecurringTransactions);
@@ -174,7 +189,24 @@ export default function ManageTransactionsPage() {
         amount,
         cuotas: editingTransaction.cuotas,
       });
-      
+      // If this transaction came from a recurring template, offer to update that template
+      if (selectedTransaction?.recurringTransactionId) {
+        const updates: RecurringUpdates = {
+          description: editingTransaction.description,
+          amount,
+          categoryId: editingTransaction.categoryId,
+          cuotas: editingTransaction.cuotas,
+        };
+        if (editingTransaction.transactionType === 'expense') {
+          updates.paymentTypeId = editingTransaction.paymentTypeId;
+        }
+        setPendingRecurringUpdate({
+          id: selectedTransaction.recurringTransactionId as Id<'recurringTransactions'>,
+          updates,
+        });
+        setIsRecurringUpdatePromptOpen(true);
+      }
+
       toast({
         title: "Success",
         description: "Transaction updated successfully",
@@ -419,6 +451,24 @@ export default function ManageTransactionsPage() {
     });
   };
 
+  const handleDeclineAll = async () => {
+    if (currentTab !== "unverified") return;
+    const targets = filteredTransactions
+      .filter((t) => t.verified === false)
+      .map((t) => t._id as Id<"expenses">);
+    if (targets.length === 0) return;
+    setIsDecliningAll(true);
+    const results = await Promise.allSettled(targets.map((id) => deleteExpense({ id })));
+    setIsDecliningAll(false);
+    const fulfilled = results.filter((r) => r.status === "fulfilled").length;
+    const rejected = results.length - fulfilled;
+    toast({
+      title: "Decline complete",
+      description: `${fulfilled} declined${rejected ? `, ${rejected} failed` : ""}`,
+      variant: rejected ? "destructive" : "default",
+    });
+  };
+
   if (currentView === "transactions") {
     return (
       <div className="flex flex-col">
@@ -436,13 +486,30 @@ export default function ManageTransactionsPage() {
           </div>
           {currentTab === "unverified" && (
             <div className="w-full mb-2 flex justify-end">
-              <Button
-                className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={handleVerifyAll}
-                disabled={isVerifyingAll || filteredTransactions.filter((t) => t.verified === false).length === 0}
-              >
-                {isVerifyingAll ? "Verifying..." : "Verify all"}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={handleDeclineAll}
+                  disabled={
+                    isDecliningAll ||
+                    isVerifyingAll ||
+                    filteredTransactions.filter((t) => t.verified === false).length === 0
+                  }
+                >
+                  {isDecliningAll ? "Declining..." : "Decline all"}
+                </Button>
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={handleVerifyAll}
+                  disabled={
+                    isVerifyingAll ||
+                    isDecliningAll ||
+                    filteredTransactions.filter((t) => t.verified === false).length === 0
+                  }
+                >
+                  {isVerifyingAll ? "Verifying..." : "Verify all"}
+                </Button>
+              </div>
             </div>
           )}
           
@@ -686,6 +753,48 @@ export default function ManageTransactionsPage() {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+        {/* Prompt to update the related recurring template after editing a generated transaction */}
+        <Dialog open={isRecurringUpdatePromptOpen} onOpenChange={(open) => { if (!open) { setIsRecurringUpdatePromptOpen(false); setPendingRecurringUpdate(null); } }}>
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-md p-4 rounded-xl border bg-card text-card-foreground sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Update recurring template?</DialogTitle>
+              <DialogDescription>
+                Apply these changes to the recurring transaction so future occurrences are created with the same updates.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="text-sm text-muted-foreground">
+              This will not change past transactions.
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => { setIsRecurringUpdatePromptOpen(false); setPendingRecurringUpdate(null); }}
+                disabled={isUpdatingRecurring}
+              >
+                Not now
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!pendingRecurringUpdate) return;
+                  setIsUpdatingRecurring(true);
+                  try {
+                    await updateRecurring({ id: pendingRecurringUpdate.id, ...pendingRecurringUpdate.updates });
+                    toast({ title: "Success", description: "Recurring template updated" });
+                  } catch (err) {
+                    toast({ variant: "destructive", title: "Error", description: "Failed to update recurring template" });
+                  } finally {
+                    setIsUpdatingRecurring(false);
+                    setIsRecurringUpdatePromptOpen(false);
+                    setPendingRecurringUpdate(null);
+                  }
+                }}
+                disabled={isUpdatingRecurring}
+              >
+                {isUpdatingRecurring ? "Updating..." : "Update template"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
