@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import CategorySelectWithCreate from "@/components/CategorySelectWithCreate";
 import { 
   Drawer, 
   DrawerContent, 
@@ -20,6 +21,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
+import PaymentTypeSelectWithCreate from "@/components/PaymentTypeSelectWithCreate";
 
 interface AddExpensePageProps {
   onOpenChange: (open: boolean) => void;
@@ -223,34 +225,10 @@ export default function AddExpensePage({ onOpenChange }: AddExpensePageProps) {
               <div className="grid grid-cols-4 gap-4">
                 <div className="col-span-3 space-y-2">
                   <Label htmlFor="paymentType">Payment Type</Label>
-                  <Select 
-                    value={paymentTypeId} 
-                    onValueChange={(value) => setPaymentTypeId(value as Id<"paymentTypes"> | "")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {paymentTypes
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map(pt => (
-                        <SelectItem key={pt._id} value={pt._id}>
-                          <div className="flex items-center gap-2">
-                            <span>{pt.name}</span>
-                            {pt.isCredit ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Credit
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Debit
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <PaymentTypeSelectWithCreate
+                    value={paymentTypeId}
+                    onChange={(value) => setPaymentTypeId(value as Id<"paymentTypes"> | "")}
+                  />
                 </div>
                 
                 <div className="space-y-2">
@@ -267,20 +245,11 @@ export default function AddExpensePage({ onOpenChange }: AddExpensePageProps) {
               
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
-                <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<"categories"> | "")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map(c => (
-                      <SelectItem key={c._id} value={c._id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CategorySelectWithCreate
+                  value={categoryId}
+                  onChange={(value) => setCategoryId(value as Id<"categories"> | "")}
+                  transactionType="expense"
+                />
               </div>
               
               <div className="space-y-2">

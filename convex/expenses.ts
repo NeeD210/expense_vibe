@@ -320,19 +320,21 @@ export const updateCategories = mutation({
       }
     }
     
-    // Create new categories
+    // Create new categories OR reactivate soft-deleted ones
     for (const category of args.categories) {
-      const exists = existingCategories.some(c => 
+      const existing = existingCategories.find(c => 
         c.name === category.name && 
         c.transactionType === category.transactionType
       );
-      if (!exists) {
+      if (!existing) {
         await ctx.db.insert("categories", {
           name: category.name,
           userId,
           transactionType: category.transactionType,
           softdelete: false,
         });
+      } else if (existing.softdelete) {
+        await ctx.db.patch(existing._id, { softdelete: false });
       }
     }
   },

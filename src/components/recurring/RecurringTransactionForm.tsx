@@ -14,13 +14,9 @@ import {
   DrawerClose,
 } from '../ui/drawer';
 import { Input } from '../ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import CategorySelectWithCreate from '@/components/CategorySelectWithCreate';
+import PaymentTypeSelectWithCreate from '@/components/PaymentTypeSelectWithCreate';
 import {
   Popover,
   PopoverContent,
@@ -358,59 +354,20 @@ const RecurringTransactionForm = ({ onOpenChange, editId }: RecurringTransaction
                 {transactionType === 'expense' && (
                   <div className="space-y-2">
                     <Label htmlFor="paymentType">Payment Method</Label>
-                    <Select value={paymentTypeId} onValueChange={(value) => setPaymentTypeId(value as Id<'paymentTypes'> | '')}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select payment method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {paymentTypes
-                          .sort((a, b) => a.name.localeCompare(b.name))
-                          .map(pt => (
-                            <SelectItem key={pt._id} value={pt._id}>
-                              <div className="flex items-center gap-2">
-                                <span>{pt.name}</span>
-                                {pt.isCredit ? (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    Credit
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Debit
-                                  </span>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <PaymentTypeSelectWithCreate
+                      value={paymentTypeId}
+                      onChange={(value) => setPaymentTypeId(value as Id<'paymentTypes'> | '')}
+                    />
                   </div>
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={categoryId ? String(categoryId) : ''}
-                    onValueChange={value => setCategoryId(String(value))}
-                    disabled={isLoadingCategories || filteredCategories.length === 0}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={isLoadingCategories ? "Loading categories..." : "Select category"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingCategories ? (
-                        <SelectItem value="loading" disabled>Loading...</SelectItem>
-                      ) : filteredCategories.length === 0 ? (
-                        <SelectItem value="no-categories" disabled>No categories found. Please ensure you are logged in and have categories configured.</SelectItem>
-                      ) : (
-                        filteredCategories
-                          .sort((a, b) => a.name.localeCompare(b.name))
-                          .map(cat => (
-                            <SelectItem key={String(cat._id)} value={String(cat._id)}>
-                              {cat.name}
-                            </SelectItem>
-                          ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <CategorySelectWithCreate
+                    value={categoryId}
+                    onChange={(value) => setCategoryId(String(value))}
+                    transactionType={transactionType}
+                    disabled={isLoadingCategories}
+                  />
                 </div>
               </div>
               

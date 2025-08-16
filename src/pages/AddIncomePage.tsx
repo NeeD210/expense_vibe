@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import CategorySelectWithCreate from "@/components/CategorySelectWithCreate";
 import { 
   Drawer, 
   DrawerContent, 
@@ -172,20 +173,11 @@ export default function AddIncomePage({ onOpenChange }: AddIncomePageProps) {
               
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
-                <Select value={categoryId} onValueChange={(value) => setCategoryId(value as Id<"categories"> | "")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map(c => (
-                      <SelectItem key={c._id} value={c._id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CategorySelectWithCreate
+                  value={categoryId}
+                  onChange={(value) => setCategoryId(value as Id<"categories"> | "")}
+                  transactionType="income"
+                />
               </div>
               
               <div className="space-y-2">

@@ -4,7 +4,7 @@ import { SignInForm } from "./SignInForm";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
-import { Home, PieChart, Settings, Plus, List, TrendingDown, TrendingUp, Repeat, Calendar, AreaChart } from "lucide-react";
+import { Home, PieChart, Settings, Plus, List, TrendingDown, TrendingUp, Repeat, Calendar, AreaChart, ArrowLeft } from "lucide-react";
 import HomePage from "./pages/HomePage";
 import ConfigPage from "./pages/ConfigPage";
 import AddExpensePage from "./pages/AddExpensePage";
@@ -54,6 +54,8 @@ export default function App() {
     if (path === "/") setCurrentPage("home");
     else if (path === "/config") setCurrentPage("config");
     else if (path === "/transactions") setCurrentPage("transactions");
+    else if (path.startsWith("/transactions/manage")) setCurrentPage("manage");
+    else if (path.startsWith("/transactions/recurring")) setCurrentPage("recurring");
     else if (path === "/projections") setCurrentPage("projections");
   }, [location.pathname]);
 
@@ -107,22 +109,33 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-background dark:bg-background">
       <Authenticated>
-        <header className="sticky top-0 z-10 bg-background/80 dark:bg-background/80 backdrop-blur-sm p-4 flex justify-between items-center border-b">
-          <img src={theme === "dark" ? PFIBlackLogo : PerFiLogo} alt="PerFi App Logo" className="h-10" />
+        <header className="fixed top-0 left-0 right-0 z-20 bg-background/80 dark:bg-background/80 backdrop-blur-sm p-4 flex justify-between items-center border-b">
+          {currentPage === 'manage' || currentPage === 'recurring' ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/transactions")}
+              className="rounded-full"
+            >
+              <ArrowLeft size={24} />
+            </Button>
+          ) : (
+            <img src={theme === "dark" ? PFIBlackLogo : PerFiLogo} alt="PerFi App Logo" className="h-10" />
+          )}
           <div className="absolute left-1/2 transform -translate-x-1/2 text-2xl font-bold text-foreground">
             {currentPage === 'home' && 'Home'}
             {currentPage === 'add' && 'Expense'}
             {currentPage === 'income' && 'Income'}
-            {currentPage === 'recurring' && 'Recurring Transaction'}
+            {currentPage === 'recurring' && 'Recurring'}
             {currentPage === 'transactions' && 'Transactions'}
             {currentPage === 'config' && 'Settings'}
-            {currentPage === 'manage' && 'Manage Transactions'}
+            {currentPage === 'manage' && 'Transactions'}
             {currentPage === 'projections' && 'Projections'}
           </div>
         </header>
       </Authenticated>
       
-      <main className="flex-1 flex flex-col p-4 pb-20">
+      <main className="flex-1 flex flex-col p-4 pt-[72px] pb-20">
         <Authenticated>
           <Routes>
             <Route path="/" element={<HomePage />} />
