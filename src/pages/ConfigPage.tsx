@@ -9,7 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Id } from "../../convex/_generated/dataModel";
 import { useTheme } from "../context/ThemeContext";
-import { PaymentTypeList } from "../components/PaymentTypeList";
+import PaymentTypesManager from "../components/PaymentTypesManager";
+import CategoriesManager from "../components/CategoriesManager";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PaymentTypeForm } from "@/components/PaymentTypeForm";
+import { CategoryForm } from "@/components/CategoryForm";
 
 type ConfigView = "navigation" | "categories" | "incomeCategories" | "paymentTypes";
 
@@ -21,6 +25,8 @@ export default function ConfigPage() {
   const [newIncomeCategory, setNewIncomeCategory] = useState("");
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [addCategoryType, setAddCategoryType] = useState<"expense" | "income">("expense");
 
   // Reset currentView to "navigation" when component mounts
   useEffect(() => {
@@ -74,7 +80,7 @@ export default function ConfigPage() {
 
   if (currentView === "navigation") {
     return (
-      <div className="flex flex-col h-[calc(100vh-11rem)]">
+      <div className="flex flex-col h-[calc(100vh-11rem)] pt-2">
         <div className="flex-1">
           <div className="grid gap-4">
             <Card
@@ -128,94 +134,60 @@ export default function ConfigPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCurrentView("navigation")}
-          className="rounded-full"
-        >
-          <ArrowLeft size={20} />
-        </Button>
-        <h2 className="text-2xl font-semibold">
-          {currentView === "categories" ? "Expense Categories" : 
-           currentView === "incomeCategories" ? "Income Categories" : 
-           "Payment Types"}
-        </h2>
+    <div className="flex flex-col gap-6 pt-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCurrentView("navigation")}
+            className="rounded-full"
+          >
+            <ArrowLeft size={20} />
+          </Button>
+        </div>
+        <h2 className="text-2xl font-semibold text-center">{currentView === "categories" ? "Expense Categories" : currentView === "incomeCategories" ? "Income Categories" : "Payment Types"}</h2>
+        <div className="flex items-center gap-2">
+          {currentView === "paymentTypes" && (
+            <Button onClick={() => setIsAddDialogOpen(true)}>Add Payment Type</Button>
+          )}
+          {currentView === "categories" && (
+            <Button onClick={() => { setAddCategoryType("expense"); setIsAddDialogOpen(true); }}>Add Category</Button>
+          )}
+          {currentView === "incomeCategories" && (
+            <Button onClick={() => { setAddCategoryType("income"); setIsAddDialogOpen(true); }}>Add Category</Button>
+          )}
+        </div>
       </div>
 
       {currentView === "categories" ? (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              value={newExpenseCategory}
-              onChange={e => setNewExpenseCategory(e.target.value)}
-              placeholder="New expense category"
-              className="flex-1"
-            />
-            <Button onClick={() => handleAddCategory(newExpenseCategory, "expense")}>
-              Add
-            </Button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {categories
-              .filter(c => c.transactionType === "expense")
-              .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-              .map(category => (
-                <Card key={category._id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <span>{category.name}</span>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleRemoveCategory(category)}
-                    >
-                      Remove
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-          </div>
-        </div>
+        <CategoriesManager type="expense" />
       ) : currentView === "incomeCategories" ? (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              value={newIncomeCategory}
-              onChange={e => setNewIncomeCategory(e.target.value)}
-              placeholder="New income category"
-              className="flex-1"
-            />
-            <Button onClick={() => handleAddCategory(newIncomeCategory, "income")}>
-              Add
-            </Button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {categories
-              .filter(c => c.transactionType === "income")
-              .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-              .map(category => (
-                <Card key={category._id}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <span>{category.name}</span>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleRemoveCategory(category)}
-                    >
-                      Remove
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-          </div>
-        </div>
+        <CategoriesManager type="income" />
       ) : (
-        <PaymentTypeList />
+        <>
+          <PaymentTypesManager />
+        </>
       )}
+
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-md p-4 rounded-xl border bg-card text-card-foreground sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {currentView === "paymentTypes" ? "Add Payment Type" : "Add Category"}
+            </DialogTitle>
+          </DialogHeader>
+          {currentView === "paymentTypes" ? (
+            <PaymentTypeForm onSuccess={() => setIsAddDialogOpen(false)} onCancel={() => setIsAddDialogOpen(false)} />
+          ) : (
+            <CategoryForm
+              transactionType={addCategoryType}
+              onSuccess={() => setIsAddDialogOpen(false)}
+              onCancel={() => setIsAddDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface PaymentTypeRecord {
 	_id: Id<"paymentTypes">;
@@ -27,6 +29,9 @@ export default function PaymentTypeSelectWithCreate({ value, onChange, disabled 
 
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [newName, setNewName] = useState("");
+	const [isCredit, setIsCredit] = useState(false);
+	const [closingDay, setClosingDay] = useState("");
+	const [dueDay, setDueDay] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [pendingNewId, setPendingNewId] = useState<Id<"paymentTypes"> | null>(null);
 
@@ -38,19 +43,41 @@ export default function PaymentTypeSelectWithCreate({ value, onChange, disabled 
 			toast({ title: "Invalid name", description: "Please enter a payment type name." });
 			return;
 		}
+
+		// Validate credit card fields when needed
+		if (isCredit) {
+			const closingDayNum = parseInt(closingDay);
+			const dueDayNum = parseInt(dueDay);
+			if (isNaN(closingDayNum) || isNaN(dueDayNum)) {
+				toast({ title: "Invalid values", description: "Closing day and due day must be numbers" });
+				return;
+			}
+			if (closingDayNum < 1 || closingDayNum > 31 || dueDayNum < 1 || dueDayNum > 31) {
+				toast({ title: "Invalid range", description: "Closing day and due day must be between 1 and 31" });
+				return;
+			}
+		}
 		setIsSubmitting(true);
 		try {
-			const newId = await addPaymentType({ name, isCredit: false });
+			const newId = await addPaymentType({
+				name,
+				isCredit,
+				closingDay: isCredit ? parseInt(closingDay) : undefined,
+				dueDay: isCredit ? parseInt(dueDay) : undefined,
+			});
 			setPendingNewId(newId as Id<"paymentTypes">);
 			setIsDialogOpen(false);
 			setNewName("");
+			setIsCredit(false);
+			setClosingDay("");
+			setDueDay("");
 			toast({ title: "Payment type added", description: "New payment type created." });
 		} catch (err: any) {
 			toast({ title: "Error", description: err?.message ?? "Failed to add payment type" });
 		} finally {
 			setIsSubmitting(false);
 		}
-	}, [addPaymentType, newName, toast]);
+	}, [addPaymentType, newName, isCredit, closingDay, dueDay, toast]);
 
 	useEffect(() => {
 		if (pendingNewId) {
@@ -106,8 +133,44 @@ export default function PaymentTypeSelectWithCreate({ value, onChange, disabled 
 							onChange={(e) => setNewName(e.target.value)}
 						/>
 					</div>
+					<div className="flex items-center space-x-2 mt-2">
+						<Checkbox
+							id="isCredit"
+							checked={isCredit}
+							onCheckedChange={(checked: boolean | "indeterminate") => setIsCredit(checked === true)}
+						/>
+						<Label htmlFor="isCredit" className="text-sm font-normal">This is a credit card</Label>
+					</div>
+					{isCredit && (
+						<div className="grid grid-cols-2 gap-4 mt-2">
+							<div className="space-y-2">
+								<Label htmlFor="closingDay">Closing Day (1-31)</Label>
+								<Input
+									id="closingDay"
+									type="number"
+									value={closingDay}
+									onChange={(e) => setClosingDay(e.target.value)}
+									min="1"
+									max="31"
+									className="h-10"
+								/>
+							</div>
+							<div className="space-y-2">
+								<Label htmlFor="dueDay">Due Day (1-31)</Label>
+								<Input
+									id="dueDay"
+									type="number"
+									value={dueDay}
+									onChange={(e) => setDueDay(e.target.value)}
+									min="1"
+									max="31"
+									className="h-10"
+								/>
+							</div>
+						</div>
+					)}
 					<DialogFooter>
-						<Button variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+						<Button variant="ghost" onClick={() => { setIsDialogOpen(false); setNewName(""); setIsCredit(false); setClosingDay(""); setDueDay(""); }} disabled={isSubmitting}>Cancel</Button>
 						<Button onClick={handleAdd} disabled={isSubmitting || !newName.trim()}>Add</Button>
 					</DialogFooter>
 				</DialogContent>

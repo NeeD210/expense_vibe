@@ -80,14 +80,16 @@ export type RecurringFrequency = "daily" | "weekly" | "monthly" | "semestrally" 
 
 function clampDayOfMonth(year: number, monthZeroBased: number, desiredDay: number): Date {
   // JS Date will overflow days; clamp by creating date at 1 and then setting date min(desired, daysInMonth)
-  const firstOfMonth = new Date(year, monthZeroBased, 1);
   const daysInMonth = new Date(year, monthZeroBased + 1, 0).getDate();
   const day = Math.min(desiredDay, daysInMonth);
-  return new Date(year, monthZeroBased, day);
+  // Normalize to local noon to avoid timezone/DST shifting across date boundaries
+  return new Date(year, monthZeroBased, day, 12, 0, 0, 0);
 }
 
 export function stepDateByFrequency(current: number, frequency: RecurringFrequency, anchorDay?: number): number {
   const date = new Date(current);
+  // Normalize to local noon first, so day/week arithmetic preserves the calendar date across timezones/DST
+  date.setHours(12, 0, 0, 0);
   switch (frequency) {
     case "daily":
       date.setDate(date.getDate() + 1);
@@ -120,7 +122,10 @@ export function stepDateByFrequency(current: number, frequency: RecurringFrequen
 
 export function initializeNextDueDate(startDate: number, now: number, frequency: RecurringFrequency): number {
   // First occurrence >= now, starting at startDate
-  let candidate = startDate;
+  // Normalize candidate to local noon to ensure consistent behavior across timezones
+  const initial = new Date(startDate);
+  initial.setHours(12, 0, 0, 0);
+  let candidate = initial.getTime();
   const anchor = new Date(startDate).getDate();
   while (candidate < now) {
     candidate = stepDateByFrequency(candidate, frequency, anchor);

@@ -32,6 +32,18 @@ interface EditingTransaction {
 }
 
 export default function ManageTransactionsPage() {
+  // Helpers to format/parse dates in local timezone for <input type="date">
+  const formatDateForInputLocal = (date: Date): string => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+  const parseDateInputAsLocal = (value: string): Date => {
+    const [y, m, d] = value.split("-").map((v) => parseInt(v, 10));
+    return new Date(y, (m ?? 1) - 1, d ?? 1);
+  };
+
   const [currentView, setCurrentView] = useState<ManageView>("transactions");
   const [currentTab, setCurrentTab] = useState("all");
   const transactionsData = useQuery(api.expenses.listAllTransactions);
@@ -471,7 +483,7 @@ export default function ManageTransactionsPage() {
 
   if (currentView === "transactions") {
     return (
-      <div className="flex flex-col">
+      <div className="flex flex-col pt-2">
         <div className="flex-1">
           {/* Header is handled by App.tsx; only keep Tabs sticky under it */}
           <div className="sticky top-[72px] z-10 bg-background">
@@ -660,8 +672,8 @@ export default function ManageTransactionsPage() {
                     <Label>Date</Label>
                     <Input
                       type="date"
-                      value={editingTransaction.date.toISOString().substring(0, 10)}
-                      onChange={(e) => setEditingTransaction({ ...editingTransaction, date: new Date(e.target.value) })}
+                      value={formatDateForInputLocal(editingTransaction.date)}
+                      onChange={(e) => setEditingTransaction({ ...editingTransaction, date: parseDateInputAsLocal(e.target.value) })}
                       className="max-w-[200px]"
                     />
                   </div>
@@ -802,7 +814,7 @@ export default function ManageTransactionsPage() {
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col pt-2">
       {/* Header handled by App.tsx */}
       <div className="grid gap-4">
         {(recurringTransactions ?? []).length === 0 ? (
@@ -886,8 +898,8 @@ export default function ManageTransactionsPage() {
                   <Label>Start Date</Label>
                   <Input
                     type="date"
-                    value={editingRecurring.startDate.toISOString().substring(0, 10)}
-                    onChange={(e) => setEditingRecurring({ ...editingRecurring, startDate: new Date(e.target.value) })}
+                    value={formatDateForInputLocal(editingRecurring.startDate)}
+                    onChange={(e) => setEditingRecurring({ ...editingRecurring, startDate: parseDateInputAsLocal(e.target.value) })}
                     className="max-w-[200px]"
                   />
                 </div>
@@ -895,8 +907,8 @@ export default function ManageTransactionsPage() {
                   <Label>End Date</Label>
                   <Input
                     type="date"
-                    value={editingRecurring.endDate ? editingRecurring.endDate.toISOString().substring(0, 10) : ''}
-                    onChange={(e) => setEditingRecurring({ ...editingRecurring, endDate: e.target.value ? new Date(e.target.value) : undefined })}
+                    value={editingRecurring.endDate ? formatDateForInputLocal(editingRecurring.endDate) : ''}
+                    onChange={(e) => setEditingRecurring({ ...editingRecurring, endDate: e.target.value ? parseDateInputAsLocal(e.target.value) : undefined })}
                     className="max-w-[200px]"
                   />
                 </div>
